@@ -4,9 +4,9 @@
 using namespace tle;
 
 /* Used to identify the type of each troop
-   Needed to assign stats and also set what
-   type of troops to be effective against*/
-enum TroopName 
+Needed to assign stats and also set what
+type of troops to be effective against*/
+enum TroopName
 {
 	Swordsman,
 	Archer,
@@ -44,9 +44,9 @@ private:
 	IModel* troopModel;
 	bool playerOwned; // used to determine which way to move and where to spawn
 	TroopName name; // Type of troop
-	int maxHealth;
-	int currentHealth;
-	int damage;
+	int maxHealth; // the maximum amount of health for each troop 
+	int currentHealth; // the current health of each unit
+	int damage; // the set amount of damage a particular troop will do
 	int cost; // resources cost of each troop
 	int cooldown; // amount of time between spawning of the units
 	int speed; // movement speed
@@ -57,7 +57,7 @@ public:
 	~Troop();
 	void Move(float x); // move by x amount
 	float GetPosition(); // returns the x position of the troop
-	TroopName GetName();
+	TroopName GetName();  
 	void SetHealth(int health);
 	int GetMaxHealth();
 	int GetHealth();
@@ -73,7 +73,7 @@ public:
 	void Fire();
 };
 
-Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine) 
+Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 {
 	troopMesh = theEngine->LoadMesh("cube.x");
 	if (playerMade)
@@ -86,14 +86,6 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 	}
 	switch (name) // from the type, determine the stats of the troop
 	{
-	case Archer:
-		playerOwned = playerMade;
-		troopModel->SetSkin("Archer.jpg");
-		maxHealth = 20;
-		currentHealth = maxHealth;
-		damage = 5;
-		speed = 5;
-		break;
 	case Swordsman:
 		playerOwned = playerMade;
 		troopModel->SetSkin("Swordsman.jpg");
@@ -101,6 +93,16 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		currentHealth = maxHealth;
 		damage = 8;
 		speed = 3;
+		range = 10;
+		break;
+	case Archer:
+		playerOwned = playerMade;
+		troopModel->SetSkin("Archer.jpg");
+		maxHealth = 20;
+		currentHealth = maxHealth;
+		damage = 5;
+		speed = 5;
+		range = 20;
 		break;
 	case Spearman:
 		playerOwned = playerMade;
@@ -109,6 +111,16 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		currentHealth = maxHealth;
 		damage = 12;
 		speed = 2;
+		range = 15;
+		break;
+	case Cavalry:
+		playerOwned = playerMade;
+		troopModel->SetSkin("Cavalry.jpg");
+		maxHealth = 60;
+		currentHealth = maxHealth;
+		damage = 15;
+		speed = 8;
+		range = 10;
 		break;
 	}
 }
@@ -119,7 +131,7 @@ void Troop::Move(float x)
 	troopModel->MoveX(x);
 }
 /*Returns the value of the troops position on the x*/
-float Troop::GetPosition() 
+float Troop::GetPosition()
 {
 	return troopModel->GetX();
 }
@@ -127,6 +139,16 @@ float Troop::GetPosition()
 int Troop::GetSpeed()
 {
 	return speed;
+}
+/* returns the health of each unit*/
+int Troop::GetHealth()
+{
+	return currentHealth;
+}
+/* returns the range of each type of unit*/
+int Troop::GetRange()
+{
+	return range;
 }
 
 void main()
@@ -137,6 +159,8 @@ void main()
 
 	// Add default folder for meshes and other media
 	myEngine->AddMediaFolder("Media");
+	myEngine->AddMediaFolder("C:\\ProgramData\\TL-Engine\\Media");
+	myEngine->AddMediaFolder("I:\\GroupGame\\GroupGame\\Media");
 
 	/**** Set up your scene here ****/
 
@@ -157,11 +181,11 @@ void main()
 	cube1 = cubeMesh->CreateModel(70, 15, 0);
 	cube1->SetSkin("CueMetal.jpg");
 	cube1->ScaleY(2);
-	
+
 	const float KCubeSpeed = 40.0f; // constant cube travel speed
 	const float kMapLimit = 65.0f; // map limit for the cube t travel 
-	const float kCamSpeed = 50.0f;
-	
+	const float kCamSpeed = 50.0f; // speed in which the camera moves
+
 
 	//timer
 	float frameTime = myEngine->Timer();
@@ -194,15 +218,25 @@ void main()
 	EKeyCode camLeft = Key_A;
 	EKeyCode camRight = Key_D;
 
+	//spawning
 	EKeyCode spawnPlayerTroop = Key_1;
 	EKeyCode spawnPlayerTroop2 = Key_2;
-	EKeyCode spawnEnemyTroop = Key_8;
-	EKeyCode spawnEnemyTroop2 = Key_9;
+	EKeyCode spawnPlayerTroop3 = Key_3;
+	EKeyCode spawnPlayerTroop4 = Key_4;
+	EKeyCode spawnEnemyTroop = Key_7;
+	EKeyCode spawnEnemyTroop2 = Key_8;
+	EKeyCode spawnEnemyTroop3 = Key_9;
+	EKeyCode spawnEnemyTroop4 = Key_0;
+
+
+	//Keep upgrades
+	EKeyCode extraHealth = Key_V;
 
 
 	// Troop Handler
 	deque<Troop*> playerTroops;
 	deque<Troop*> enemyTroops;
+
 
 
 	// The main game loop, repeat until engine is stopped
@@ -213,40 +247,74 @@ void main()
 		myEngine->DrawScene();
 
 		/**** Update your scene each frame here ****/
-		if (myEngine->KeyHeld(spawnPlayerTroop)) // Key Press 1
+		if (myEngine->KeyHit(spawnPlayerTroop)) // Key Press 1
 		{
 			Troop* playerTroop = new Troop(Swordsman, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-		if (myEngine->KeyHeld(spawnPlayerTroop2)) // Key Press 2
+		if (myEngine->KeyHit(spawnPlayerTroop2)) // Key Press 2
 		{
 			Troop* playerTroop = new Troop(Archer, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-		if (myEngine->KeyHeld(spawnEnemyTroop)) // Key Press 8
+
+		if (myEngine->KeyHit(spawnPlayerTroop3)) // Key Press 3
+		{
+			Troop* playerTroop = new Troop(Spearman, true, myEngine); // create the player troop
+			playerTroops.push_back(playerTroop); // add the troop to the players troops
+		}
+
+		if (myEngine->KeyHit(spawnPlayerTroop4)) // Key Press 4
+		{
+			Troop* playerTroop = new Troop(Cavalry, true, myEngine); // create the player troop
+			playerTroops.push_back(playerTroop); // add the troop to the players troops
+		}
+
+
+
+		if (myEngine->KeyHit(spawnEnemyTroop)) // Key Press 7
 		{
 			Troop* enemyTroop = new Troop(Swordsman, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
-		if (myEngine->KeyHeld(spawnEnemyTroop2)) // Key Press 9
+		if (myEngine->KeyHit(spawnEnemyTroop2)) // Key Press 8
 		{
 			Troop* enemyTroop = new Troop(Archer, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
 
+		if (myEngine->KeyHit(spawnEnemyTroop3)) // Key Press 9
+		{
+			Troop* enemyTroop = new Troop(Spearman, false, myEngine); // create the enemy troop
+			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
+		}
+		
+		if (myEngine->KeyHit(spawnEnemyTroop4)) // Key Press 0
+		{
+			Troop* enemyTroop = new Troop(Cavalry, false, myEngine); // create the enemy troop
+			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
+		}
+
+
+		
+
+
 		deque<Troop*>::iterator it; //iterator to loop through troops
 		//loop trough player troops
-		for (it = playerTroops.begin(); it != playerTroops.end(); it++) 
+		for (it = playerTroops.begin(); it != playerTroops.end(); it++)
 		{
 			if (enemyTroops.empty()) // if there are no enemies
 			{
 				(*it)->Move((*it)->GetSpeed()*frameTime); // move the troop by an amount based on their speed
+				(*it)->GetHealth();
 				//(troop)->Move((troop)->GetSpeed()*frameTime);
 			}
-			else if (enemyTroops.front()->GetPosition() - (*it)->GetPosition() > 20)
+			else if (enemyTroops.front()->GetPosition() - (*it)->GetPosition() > (*it)->GetRange())
 			{
+				
 				//if the distance between the first enemy and the troop above the troops range
 				(*it)->Move((*it)->GetSpeed()*frameTime); //move
+				(*it)->GetHealth();
 			}
 			//need to change range from 20 to be the troops specific range
 			//need to stop the troop if at the enemy base
@@ -257,12 +325,20 @@ void main()
 			if (playerTroops.empty())
 			{
 				(*it)->Move(-(*it)->GetSpeed()*frameTime);
+				(*it)->GetHealth();
 			}
-			else if ((*it)->GetPosition() - playerTroops.front()->GetPosition() > 20)
+			else if ((*it)->GetPosition() - playerTroops.front()->GetPosition() > (*it)->GetRange())
 			{
 				(*it)->Move(-(*it)->GetSpeed()*frameTime);
+				(*it)->GetHealth();
 			}
 		}
+
+
+
+/////// Health////////////////////////////////////////////////////////////////////////////////
+		//deque<Troop*>::iterator it; //iterator to loop through troops
+		//
 
 		//Camera Controls
 		if (myEngine->KeyHeld(camFor))
