@@ -1,6 +1,9 @@
 // Game_Of_Way.cpp: A program using the TL-Engine
 #include <TL-Engine.h>	// TL-Engine include file and namespace
 #include <deque>
+#include <sstream>
+
+using namespace std;
 using namespace tle;
 
 /* Used to identify the type of each troop
@@ -34,7 +37,9 @@ public:
 	bool PurchaseWeapon();
 };
 
-Base::Base() {
+Base::Base() 
+{
+	int health = 100;
 
 }
 
@@ -57,7 +62,7 @@ public:
 	~Troop();
 	void Move(float x); // move by x amount
 	float GetPosition(); // returns the x position of the troop
-	TroopName GetName();  
+	TroopName GetName();
 	void SetHealth(int health);
 	int GetMaxHealth();
 	int GetHealth();
@@ -75,7 +80,7 @@ public:
 
 Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 {
-	troopMesh = theEngine->LoadMesh("cube.x");
+	troopMesh = theEngine->LoadMesh("quad.x");
 	if (playerMade)
 	{
 		troopModel = troopMesh->CreateModel(-60, 10, 0); // -60, 10, 0, spawning location for player base
@@ -88,7 +93,9 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 	{
 	case Swordsman:
 		playerOwned = playerMade;
-		troopModel->SetSkin("Swordsman.jpg");
+		troopModel->SetSkin("Swordsman.png");
+		troopModel->RotateLocalX(180);
+		troopModel->SetLocalZ(0.1);
 		maxHealth = 40;
 		currentHealth = maxHealth;
 		damage = 8;
@@ -97,7 +104,9 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		break;
 	case Archer:
 		playerOwned = playerMade;
-		troopModel->SetSkin("Archer.jpg");
+		troopModel->SetSkin("Archer.png");
+		troopModel->RotateLocalX(180);
+		troopModel->SetLocalZ(0.2);
 		maxHealth = 20;
 		currentHealth = maxHealth;
 		damage = 5;
@@ -106,7 +115,9 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		break;
 	case Spearman:
 		playerOwned = playerMade;
-		troopModel->SetSkin("Spearman.jpg");
+		troopModel->SetSkin("Spearman.png");
+		troopModel->SetLocalZ(0.3);
+		troopModel->RotateLocalX(180);
 		maxHealth = 25;
 		currentHealth = maxHealth;
 		damage = 12;
@@ -116,6 +127,7 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 	case Cavalry:
 		playerOwned = playerMade;
 		troopModel->SetSkin("Cavalry.jpg");
+		troopModel->SetLocalZ(0.4);
 		maxHealth = 60;
 		currentHealth = maxHealth;
 		damage = 15;
@@ -165,6 +177,9 @@ void main()
 	/**** Set up your scene here ****/
 
 	IMesh* cubeMesh;
+	IMesh* quadMesh;
+
+	IModel* quad;
 	IModel* cube;
 	IModel* cube1;
 	IModel* cubeP;
@@ -185,10 +200,17 @@ void main()
 	const float KCubeSpeed = 40.0f; // constant cube travel speed
 	const float kMapLimit = 65.0f; // map limit for the cube t travel 
 	const float kCamSpeed = 50.0f; // speed in which the camera moves
+	const float kStop = 0.0f; 
 
 
 	//timer
 	float frameTime = myEngine->Timer();
+
+	// fonts 
+	IFont* myFont = myEngine->LoadFont("Times New Roman", 20);
+	// Load "Times New Roman" font at 20 points
+
+
 
 	/*==========
 	|| camera ||
@@ -247,6 +269,28 @@ void main()
 		myEngine->DrawScene();
 
 		/**** Update your scene each frame here ****/
+
+		//fonts
+		stringstream outText;
+		outText << "-Game Of Way-";
+		myFont->Draw(outText.str(), 20, 20);
+		outText.str(""); // Clear myStream
+
+		outText << "Frame Time: "<< frameTime;
+		myFont->Draw(outText.str(), 20, 40);
+		outText.str(""); // Clear myStream
+
+		
+		outText << "Base health: 100"; //place holder values
+		myFont->Draw(outText.str(), 20, 60);
+		outText.str(""); // Clear myStream
+
+		outText << "Enemy Base Health: 100 "; // place holder values 
+		myFont->Draw(outText.str(), 20, 80);
+		outText.str(""); // Clear myStream
+
+
+
 		if (myEngine->KeyHit(spawnPlayerTroop)) // Key Press 1
 		{
 			Troop* playerTroop = new Troop(Swordsman, true, myEngine); // create the player troop
@@ -288,7 +332,7 @@ void main()
 			Troop* enemyTroop = new Troop(Spearman, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
-		
+
 		if (myEngine->KeyHit(spawnEnemyTroop4)) // Key Press 0
 		{
 			Troop* enemyTroop = new Troop(Cavalry, false, myEngine); // create the enemy troop
@@ -296,7 +340,7 @@ void main()
 		}
 
 
-		
+
 
 
 		deque<Troop*>::iterator it; //iterator to loop through troops
@@ -305,13 +349,14 @@ void main()
 		{
 			if (enemyTroops.empty()) // if there are no enemies
 			{
-				(*it)->Move((*it)->GetSpeed()*frameTime); // move the troop by an amount based on their speed
-				(*it)->GetHealth();
-				//(troop)->Move((troop)->GetSpeed()*frameTime);
+					(*it)->Move((*it)->GetSpeed()*frameTime); // move the troop by an amount based on their speed
+					(*it)->GetHealth();
+					
+					//(troop)->Move((troop)->GetSpeed()*frameTime);
 			}
 			else if (enemyTroops.front()->GetPosition() - (*it)->GetPosition() > (*it)->GetRange())
 			{
-				
+
 				//if the distance between the first enemy and the troop above the troops range
 				(*it)->Move((*it)->GetSpeed()*frameTime); //move
 				(*it)->GetHealth();
@@ -336,7 +381,7 @@ void main()
 
 
 
-/////// Health////////////////////////////////////////////////////////////////////////////////
+		/////// Health////////////////////////////////////////////////////////////////////////////////
 		//deque<Troop*>::iterator it; //iterator to loop through troops
 		//
 
