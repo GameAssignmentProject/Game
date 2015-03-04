@@ -1,7 +1,8 @@
 // Game_Of_Way.cpp: A program using the TL-Engine
 #include <TL-Engine.h>	// TL-Engine include file and namespace
-#include <deque>
+#include <list>
 #include <sstream>
+#include <ctime>
 
 using namespace std;
 using namespace tle;
@@ -28,6 +29,8 @@ public:
 	~Base();
 	void SetHealth(int health);
 	int GetHealth();
+	void SetMaxHealth(int health);
+	int GetMaxHealth();
 	void TakeDamage(int damage);
 	void SpendResources(int amount);
 	void GainResources(int amount);
@@ -39,11 +42,50 @@ public:
 
 Base::Base() 
 {
-	int health = 100;
-
+	maxHealth = 100;
+	currentHealth = maxHealth;
+	resources = 0;
+	rps = 1;
 }
 
-class Troop {
+void Base::SetHealth(int health)
+{
+	if (health < maxHealth)
+	{
+		currentHealth = health;
+	}
+	else
+	{
+		currentHealth = maxHealth;
+	}
+}
+
+int Base::GetHealth()
+{
+	return currentHealth;
+}
+
+void Base::SetMaxHealth(int health)
+{
+	maxHealth = health;
+}
+
+int Base::GetMaxHealth()
+{
+	return maxHealth;
+}
+
+void Base::TakeDamage(int damage)
+{
+	currentHealth -= damage;
+	if (currentHealth <= 0)
+	{
+		currentHealth = 0;
+	}
+}
+
+class Troop 
+{
 private:
 	IMesh* troopMesh;//mesh and model may not be needed when using sprites
 	IModel* troopModel;
@@ -60,13 +102,15 @@ private:
 public:
 	Troop(TroopName name, bool playerOwned, I3DEngine* theEngine);
 	~Troop();
+	IMesh* GetMesh();
+	IModel* GetModel();
 	void Move(float x); // move by x amount
 	float GetPosition(); // returns the x position of the troop
 	TroopName GetName();
 	void SetHealth(int health);
 	int GetMaxHealth();
 	int GetHealth();
-	void TakeDamage(int amount);
+	bool TakeDamage(int amount);
 	bool UpgradeTroop();
 	int GetDamage();
 	int GetCost();
@@ -74,7 +118,7 @@ public:
 	int GetSpeed();
 	int GetRange();
 	TroopName GetEffective();
-	void Attack(int idToAttack);
+	void Attack();
 	void Fire();
 };
 
@@ -137,6 +181,21 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 	}
 }
 
+Troop::~Troop()
+{
+	//troopModel->~IModel();
+}
+
+IMesh* Troop::GetMesh()
+{
+	return troopMesh;
+}
+
+IModel* Troop::GetModel()
+{
+	return troopModel;
+}
+
 /*Move the troop by the amount along the x (along the map)*/
 void Troop::Move(float x)
 {
@@ -157,10 +216,41 @@ int Troop::GetHealth()
 {
 	return currentHealth;
 }
+
+bool Troop::TakeDamage(int damage)
+{
+	currentHealth -= damage;
+	if (currentHealth <= 0)
+	{
+		currentHealth = 0;
+		return true;
+	}
+	return false;
+}
+
+int Troop::GetDamage()
+{
+	return damage;
+}
+
 /* returns the range of each type of unit*/
 int Troop::GetRange()
 {
 	return range;
+}
+
+
+/*Troop Blueprints*/
+Troop* troopBlueprints[4];
+
+bool CompPlayerTroopX(Troop* first, Troop* second)
+{
+	return (first->GetPosition() > second->GetPosition());
+}
+
+bool CompEnemyTroopX(Troop* first, Troop* second)
+{
+	return (first->GetPosition() <= second->GetPosition());
 }
 
 void main()
@@ -172,7 +262,7 @@ void main()
 	// Add default folder for meshes and other media
 	myEngine->AddMediaFolder("Media");
 	myEngine->AddMediaFolder("C:\\ProgramData\\TL-Engine\\Media");
-	myEngine->AddMediaFolder("I:\\GroupGame\\GroupGame\\Media");
+	//myEngine->AddMediaFolder("I:\\GroupGame\\GroupGame\\Media");
 
 	/**** Set up your scene here ****/
 
@@ -180,22 +270,22 @@ void main()
 	IMesh* quadMesh;
 
 	IModel* quad;
-	IModel* cube;
-	IModel* cube1;
-	IModel* cubeP;
+	IModel* ground;
+	IModel* playerBaseModel;
+	IModel* enemyBaseModel;
 
 	cubeMesh = myEngine->LoadMesh("Cube.x");
-	cube = cubeMesh->CreateModel();
-	cube->SetSkin("Grass1.jpg");
-	cube->ScaleX(15);
+	ground = cubeMesh->CreateModel();
+	ground->SetSkin("Grass1.jpg");
+	ground->ScaleX(15);
 
-	cube1 = cubeMesh->CreateModel(-70, 15, 0);
-	cube1->SetSkin("CueTip.jpg");
-	cube1->ScaleY(2);
+	playerBaseModel = cubeMesh->CreateModel(-70, 15, 0);
+	playerBaseModel->SetSkin("CueTip.jpg");
+	playerBaseModel->ScaleY(2);
 
-	cube1 = cubeMesh->CreateModel(70, 15, 0);
-	cube1->SetSkin("CueMetal.jpg");
-	cube1->ScaleY(2);
+	enemyBaseModel = cubeMesh->CreateModel(70, 15, 0);
+	enemyBaseModel->SetSkin("CueMetal.jpg");
+	enemyBaseModel->ScaleY(2);
 
 	const float KCubeSpeed = 40.0f; // constant cube travel speed
 	const float kMapLimit = 65.0f; // map limit for the cube t travel 
@@ -205,12 +295,18 @@ void main()
 
 	//timer
 	float frameTime = myEngine->Timer();
+	time_t lastTroopSort = time(NULL);
 
 	// fonts 
 	IFont* myFont = myEngine->LoadFont("Times New Roman", 20);
 	// Load "Times New Roman" font at 20 points
 
+	/*========
+	|| base ||
+	========*/
 
+	Base* playerBase = new Base();
+	Base* enemyBase = new Base();
 
 	/*==========
 	|| camera ||
@@ -250,16 +346,13 @@ void main()
 	EKeyCode spawnEnemyTroop3 = Key_9;
 	EKeyCode spawnEnemyTroop4 = Key_0;
 
-
 	//Keep upgrades
 	EKeyCode extraHealth = Key_V;
 
 
 	// Troop Handler
-	deque<Troop*> playerTroops;
-	deque<Troop*> enemyTroops;
-
-
+	list<Troop*> playerTroops;
+	list<Troop*> enemyTroops;
 
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
@@ -281,7 +374,7 @@ void main()
 		outText.str(""); // Clear myStream
 
 		
-		outText << "Base health: 100"; //place holder values
+		outText << "Base health: " << playerBase->GetHealth() << " / " << playerBase->GetMaxHealth();
 		myFont->Draw(outText.str(), 20, 60);
 		outText.str(""); // Clear myStream
 
@@ -289,7 +382,7 @@ void main()
 		myFont->Draw(outText.str(), 20, 80);
 		outText.str(""); // Clear myStream
 
-
+		
 
 		if (myEngine->KeyHit(spawnPlayerTroop)) // Key Press 1
 		{
@@ -339,11 +432,25 @@ void main()
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
 
+		if (myEngine->KeyHit(extraHealth))
+		{
+			int currentMax = playerBase->GetMaxHealth();
+			int newMax = currentMax*1.5;
+			int currentHealth = playerBase->GetMaxHealth();
+			int newHealth = currentHealth + (newMax - currentMax);
+			playerBase->SetMaxHealth(newMax);
+			playerBase->SetHealth(newHealth);
+		}
 
 
 
+		/*Sort the troops based on their x coordinates to determine who is at the front*/
+		if (difftime(time(NULL), lastTroopSort)>1) {
+			playerTroops.sort(CompPlayerTroopX);
+			enemyTroops.sort(CompEnemyTroopX);
+		}
 
-		deque<Troop*>::iterator it; //iterator to loop through troops
+		list<Troop*>::iterator it; //iterator to loop through troops
 		//loop trough player troops
 		for (it = playerTroops.begin(); it != playerTroops.end(); it++)
 		{
@@ -367,22 +474,46 @@ void main()
 		}
 		//all the same stuff as above except the roles are reversed
 		for (it = enemyTroops.begin(); it != enemyTroops.end(); it++) {
-			if (playerTroops.empty())
-			{
-				(*it)->Move(-(*it)->GetSpeed()*frameTime);
-				(*it)->GetHealth();
+			if (playerTroops.empty()) // There are no player troops on the field
+			{ 
+				// Troop is not in range of player base
+				if ((*it)->GetPosition() > playerBaseModel->GetX() + (*it)->GetRange()) 
+				{
+					(*it)->Move(-(*it)->GetSpeed()*frameTime);
+					//(*it)->GetHealth(); // commented because i dont know what this is for
+				}
+				else // Troop is in range of player base
+				{
+					playerBase->TakeDamage((*it)->GetDamage()); // Base takes damage from the troop in range
+				}
 			}
-			else if ((*it)->GetPosition() - playerTroops.front()->GetPosition() > (*it)->GetRange())
+			else // There are player troops on the field
 			{
-				(*it)->Move(-(*it)->GetSpeed()*frameTime);
-				(*it)->GetHealth();
+				//Enemy troop is out of range of player troop
+				if ((*it)->GetPosition() - playerTroops.front()->GetPosition() > (*it)->GetRange())
+				{
+					(*it)->Move(-(*it)->GetSpeed()*frameTime);
+					//(*it)->GetHealth(); // commented because i dont know what this is for
+				}
+				else // Enemy troop is in range of player troop
+				{
+					bool died = playerTroops.front()->TakeDamage((*it)->GetDamage());
+					if (died)
+					{
+						Troop* temp = playerTroops.front();
+						temp->GetMesh()->RemoveModel(temp->GetModel());
+						myEngine->RemoveMesh(temp->GetMesh());
+						playerTroops.pop_front();
+						delete temp;
+					}
+				}
 			}
 		}
 
 
 
 		/////// Health////////////////////////////////////////////////////////////////////////////////
-		//deque<Troop*>::iterator it; //iterator to loop through troops
+		//list<Troop*>::iterator it; //iterator to loop through troops
 		//
 
 		//Camera Controls
