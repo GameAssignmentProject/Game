@@ -99,9 +99,9 @@ private:
 	int speed; // movement speed
 	int range; // distance at which the troop will begin attacking
 	TroopName effectiveAgainst;
+	time_t lastAttack;
 public:
 	Troop(TroopName name, bool playerOwned, I3DEngine* theEngine);
-	~Troop();
 	IMesh* GetMesh();
 	IModel* GetModel();
 	void Move(float x); // move by x amount
@@ -118,8 +118,9 @@ public:
 	int GetSpeed();
 	int GetRange();
 	TroopName GetEffective();
-	void Attack();
 	void Fire();
+	time_t GetLastAttack();
+	void SetLastAttack(time_t theTime);
 };
 
 Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
@@ -127,18 +128,21 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 	troopMesh = theEngine->LoadMesh("quad.x");
 	if (playerMade)
 	{
-		troopModel = troopMesh->CreateModel(-60, 10, 0); // -60, 10, 0, spawning location for player base
+		troopModel = troopMesh->CreateModel(-70, 10, 0); // -60, 10, 0, spawning location for player base
 	}
 	else
 	{
-		troopModel = troopMesh->CreateModel(60, 10, 0); // 60, 10, 0, spawning location for enemy base
+		troopModel = troopMesh->CreateModel(70, 10, 0); // 60, 10, 0, spawning location for enemy base
+		troopModel->RotateLocalY(180);
 	}
+	troopModel->RotateLocalX(180);
+	playerOwned = playerMade;
+	lastAttack = time(0);
 	switch (name) // from the type, determine the stats of the troop
 	{
 	case Swordsman:
 		playerOwned = playerMade;
 		troopModel->SetSkin("Swordsman.png");
-		troopModel->RotateLocalX(180);
 		troopModel->SetLocalZ(0.1);
 		maxHealth = 40;
 		currentHealth = maxHealth;
@@ -149,7 +153,6 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 	case Archer:
 		playerOwned = playerMade;
 		troopModel->SetSkin("Archer.png");
-		troopModel->RotateLocalX(180);
 		troopModel->SetLocalZ(0.2);
 		maxHealth = 20;
 		currentHealth = maxHealth;
@@ -161,7 +164,6 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		playerOwned = playerMade;
 		troopModel->SetSkin("Spearman.png");
 		troopModel->SetLocalZ(0.3);
-		troopModel->RotateLocalX(180);
 		maxHealth = 25;
 		currentHealth = maxHealth;
 		damage = 12;
@@ -176,14 +178,9 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		currentHealth = maxHealth;
 		damage = 15;
 		speed = 8;
-		range = 10;
+		range = 12;
 		break;
 	}
-}
-
-Troop::~Troop()
-{
-	//troopModel->~IModel();
 }
 
 IMesh* Troop::GetMesh()
@@ -237,6 +234,16 @@ int Troop::GetDamage()
 int Troop::GetRange()
 {
 	return range;
+}
+
+time_t Troop::GetLastAttack()
+{
+	return lastAttack;
+}
+
+void Troop::SetLastAttack(time_t theTime)
+{
+	lastAttack = theTime;
 }
 
 
@@ -322,11 +329,12 @@ void main()
 	============*/
 	EKeyCode escape = Key_Escape;
 
-	//dev cam
+	//dev
 	EKeyCode camFor = Key_I;
 	EKeyCode camRotLeft = Key_J;
 	EKeyCode camRotRight = Key_L;
 	EKeyCode camBack = Key_K;
+	EKeyCode statScreen = Key_Comma;
 
 	//EKeyCode move = Key_1;
 	//EKeyCode spawn = Key_2;
@@ -346,13 +354,24 @@ void main()
 	EKeyCode spawnEnemyTroop3 = Key_9;
 	EKeyCode spawnEnemyTroop4 = Key_0;
 
+	time_t lastSpawnedSwordsman = time(0);
+	time_t lastSpawnedArcher = time(0);
+	time_t lastSpawnedSpearman = time(0);
+	time_t lastSpawnedCavalry = time(0);
+
+	time_t lastSpawnedSwordsmanE = time(0);
+	time_t lastSpawnedArcherE = time(0);
+	time_t lastSpawnedSpearmanE = time(0);
+	time_t lastSpawnedCavalryE = time(0);
+
 	//Keep upgrades
 	EKeyCode extraHealth = Key_V;
-
 
 	// Troop Handler
 	list<Troop*> playerTroops;
 	list<Troop*> enemyTroops;
+
+	bool viewStats = false;
 
 	// The main game loop, repeat until engine is stopped
 	while (myEngine->IsRunning())
@@ -363,74 +382,85 @@ void main()
 
 		/**** Update your scene each frame here ****/
 
-		//fonts
-		stringstream outText;
-		outText << "-Game Of Way-";
-		myFont->Draw(outText.str(), 20, 20);
-		outText.str(""); // Clear myStream
-
-		outText << "Frame Time: "<< frameTime;
-		myFont->Draw(outText.str(), 20, 40);
-		outText.str(""); // Clear myStream
-
-		
-		outText << "Base health: " << playerBase->GetHealth() << " / " << playerBase->GetMaxHealth();
-		myFont->Draw(outText.str(), 20, 60);
-		outText.str(""); // Clear myStream
-
-		outText << "Enemy Base Health: 100 "; // place holder values 
-		myFont->Draw(outText.str(), 20, 80);
-		outText.str(""); // Clear myStream
-
-		
-
-		if (myEngine->KeyHit(spawnPlayerTroop)) // Key Press 1
+		//Text Overlay
+		if (viewStats)
 		{
+			stringstream outText;
+			outText << "-Game Of Way-";
+			myFont->Draw(outText.str(), 20, 20);
+			outText.str(""); // Clear myStream
+
+			outText << "Frame Time: " << frameTime;
+			myFont->Draw(outText.str(), 20, 40);
+			outText.str(""); // Clear myStream
+
+			outText << "Base health: " << playerBase->GetHealth() << " / " << playerBase->GetMaxHealth();
+			myFont->Draw(outText.str(), 20, 60);
+			outText.str(""); // Clear myStream
+
+			outText << "Enemy Base Health: " << enemyBase->GetHealth() << " / " << enemyBase->GetMaxHealth(); // place holder values 
+			myFont->Draw(outText.str(), 20, 80);
+			outText.str(""); // Clear myStream
+		}
+		
+		time_t currentTime = time(0);
+		if (myEngine->KeyHit(spawnPlayerTroop) && difftime(currentTime, lastSpawnedSwordsman) > 4) // Key Press 1
+		{
+			lastSpawnedSwordsman = currentTime;
 			Troop* playerTroop = new Troop(Swordsman, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-		if (myEngine->KeyHit(spawnPlayerTroop2)) // Key Press 2
+		if (myEngine->KeyHit(spawnPlayerTroop2) && difftime(currentTime, lastSpawnedArcher) > 6) // Key Press 2
 		{
+			lastSpawnedArcher = currentTime;
 			Troop* playerTroop = new Troop(Archer, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-
-		if (myEngine->KeyHit(spawnPlayerTroop3)) // Key Press 3
+		if (myEngine->KeyHit(spawnPlayerTroop3) && difftime(currentTime, lastSpawnedSpearman) > 10) // Key Press 3
 		{
+			lastSpawnedSpearman = currentTime;
 			Troop* playerTroop = new Troop(Spearman, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-
-		if (myEngine->KeyHit(spawnPlayerTroop4)) // Key Press 4
+		if (myEngine->KeyHit(spawnPlayerTroop4) && difftime(currentTime, lastSpawnedCavalry) > 20) // Key Press 4
 		{
+			lastSpawnedCavalry = currentTime;
 			Troop* playerTroop = new Troop(Cavalry, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
 
 
 
-		if (myEngine->KeyHit(spawnEnemyTroop)) // Key Press 7
+		if (myEngine->KeyHit(spawnEnemyTroop) && difftime(currentTime, lastSpawnedSwordsmanE) < 4) // Key Press 7
 		{
+			lastSpawnedSwordsmanE = currentTime;
 			Troop* enemyTroop = new Troop(Swordsman, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
-		if (myEngine->KeyHit(spawnEnemyTroop2)) // Key Press 8
+		if (myEngine->KeyHit(spawnEnemyTroop2) && difftime(currentTime, lastSpawnedArcherE) < 6) // Key Press 8
 		{
+			lastSpawnedArcherE = currentTime;
 			Troop* enemyTroop = new Troop(Archer, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
 
-		if (myEngine->KeyHit(spawnEnemyTroop3)) // Key Press 9
+		if (myEngine->KeyHit(spawnEnemyTroop3) && difftime(currentTime, lastSpawnedSpearmanE) < 10) // Key Press 9
 		{
+			lastSpawnedSpearmanE = currentTime;
 			Troop* enemyTroop = new Troop(Spearman, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
 
-		if (myEngine->KeyHit(spawnEnemyTroop4)) // Key Press 0
+		if (myEngine->KeyHit(spawnEnemyTroop4) && difftime(currentTime, lastSpawnedCavalryE) > 20) // Key Press 0
 		{
+			lastSpawnedCavalryE = currentTime;
 			Troop* enemyTroop = new Troop(Cavalry, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
+
+		if (myEngine->KeyHit(statScreen))
+			if (viewStats) viewStats = false;
+			else viewStats = true;
 
 		if (myEngine->KeyHit(extraHealth))
 		{
@@ -456,35 +486,63 @@ void main()
 		{
 			if (enemyTroops.empty()) // if there are no enemies
 			{
+				if ((*it)->GetPosition() < enemyBaseModel->GetX() - (*it)->GetRange())
+				{
 					(*it)->Move((*it)->GetSpeed()*frameTime); // move the troop by an amount based on their speed
-					(*it)->GetHealth();
-					
-					//(troop)->Move((troop)->GetSpeed()*frameTime);
+				}
+				else
+				{
+					if (difftime(currentTime, (*it)->GetLastAttack()) > 1)
+					{
+						(*it)->SetLastAttack(currentTime);
+						enemyBase->TakeDamage((*it)->GetDamage());
+					}
+				}
 			}
-			else if (enemyTroops.front()->GetPosition() - (*it)->GetPosition() > (*it)->GetRange())
+			else
 			{
-
-				//if the distance between the first enemy and the troop above the troops range
-				(*it)->Move((*it)->GetSpeed()*frameTime); //move
-				(*it)->GetHealth();
+				if (enemyTroops.front()->GetPosition() - (*it)->GetPosition() > (*it)->GetRange())
+				{
+					(*it)->Move((*it)->GetSpeed()*frameTime);
+				}
+				else
+				{
+					if (difftime(currentTime, (*it)->GetLastAttack()) > 1)
+					{
+						(*it)->SetLastAttack(currentTime);
+						bool died = enemyTroops.front()->TakeDamage((*it)->GetDamage());
+						if (died)
+						{
+							Troop* temp = enemyTroops.front();
+							temp->GetMesh()->RemoveModel(temp->GetModel());
+							myEngine->RemoveMesh(temp->GetMesh());
+							enemyTroops.pop_front();
+							delete temp;
+						}
+					}
+				}
 			}
 			//need to change range from 20 to be the troops specific range
 			//need to stop the troop if at the enemy base
 			//need to attack enemy troops and base
 		}
 		//all the same stuff as above except the roles are reversed
-		for (it = enemyTroops.begin(); it != enemyTroops.end(); it++) {
+		for (it = enemyTroops.begin(); it != enemyTroops.end(); it++) 
+		{
 			if (playerTroops.empty()) // There are no player troops on the field
 			{ 
 				// Troop is not in range of player base
 				if ((*it)->GetPosition() > playerBaseModel->GetX() + (*it)->GetRange()) 
 				{
 					(*it)->Move(-(*it)->GetSpeed()*frameTime);
-					//(*it)->GetHealth(); // commented because i dont know what this is for
 				}
 				else // Troop is in range of player base
 				{
-					playerBase->TakeDamage((*it)->GetDamage()); // Base takes damage from the troop in range
+					if (difftime(currentTime, (*it)->GetLastAttack()) > 1)
+					{
+						(*it)->SetLastAttack(currentTime);
+						playerBase->TakeDamage((*it)->GetDamage()); // Base takes damage from the troop in range
+					}
 				}
 			}
 			else // There are player troops on the field
@@ -497,14 +555,18 @@ void main()
 				}
 				else // Enemy troop is in range of player troop
 				{
-					bool died = playerTroops.front()->TakeDamage((*it)->GetDamage());
-					if (died)
+					if (difftime(currentTime, (*it)->GetLastAttack()) > 1)
 					{
-						Troop* temp = playerTroops.front();
-						temp->GetMesh()->RemoveModel(temp->GetModel());
-						myEngine->RemoveMesh(temp->GetMesh());
-						playerTroops.pop_front();
-						delete temp;
+						(*it)->SetLastAttack(currentTime);
+						bool died = playerTroops.front()->TakeDamage((*it)->GetDamage());
+						if (died)
+						{
+							Troop* temp = playerTroops.front();
+							temp->GetMesh()->RemoveModel(temp->GetModel());
+							myEngine->RemoveMesh(temp->GetMesh());
+							playerTroops.pop_front();
+							delete temp;
+						}
 					}
 				}
 			}
