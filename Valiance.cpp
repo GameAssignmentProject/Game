@@ -20,6 +20,7 @@ enum TroopName
 
 class Base {
 private:
+	time_t lastResourceGain;
 	int maxHealth;
 	int currentHealth;
 	int resources;
@@ -38,13 +39,19 @@ public:
 	bool UpgradeBaseHealth();
 	int GetNumWeapons();
 	bool PurchaseWeapon();
+	int GetResources();
+	time_t GetLastResourceGain();
+	void SetLastResourceGain(time_t last);
+	int GetRPS();
+	void SetRPS(int amount);
 };
 
-Base::Base() 
+Base::Base()
 {
+	lastResourceGain = time(0);
 	maxHealth = 100;
 	currentHealth = maxHealth;
-	resources = 0;
+	resources = 100;
 	rps = 1;
 }
 
@@ -84,7 +91,42 @@ void Base::TakeDamage(int damage)
 	}
 }
 
-class Troop 
+int Base::GetResources()
+{
+	return resources;
+}
+
+void Base::SpendResources(int amount)
+{
+	resources -= amount;
+}
+
+void Base::GainResources(int amount)
+{
+	resources += amount;
+}
+
+time_t Base::GetLastResourceGain()
+{
+	return lastResourceGain;
+}
+
+void Base::SetLastResourceGain(time_t last)
+{
+	lastResourceGain = last;
+}
+
+int Base::GetRPS()
+{
+	return rps;
+}
+
+void Base::SetRPS(int amount)
+{
+	rps = amount;
+}
+
+class Troop
 {
 private:
 	IMesh* troopMesh;//mesh and model may not be needed when using sprites
@@ -149,6 +191,7 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		damage = 8;
 		speed = 3;
 		range = 10;
+		cost = 10;
 		break;
 	case Archer:
 		playerOwned = playerMade;
@@ -159,6 +202,7 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		damage = 5;
 		speed = 5;
 		range = 20;
+		cost = 20;
 		break;
 	case Spearman:
 		playerOwned = playerMade;
@@ -169,6 +213,7 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		damage = 12;
 		speed = 2;
 		range = 15;
+		cost = 25;
 		break;
 	case Cavalry:
 		playerOwned = playerMade;
@@ -179,6 +224,7 @@ Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
 		damage = 15;
 		speed = 8;
 		range = 12;
+		cost = 65;
 		break;
 	}
 }
@@ -246,6 +292,11 @@ void Troop::SetLastAttack(time_t theTime)
 	lastAttack = theTime;
 }
 
+int Troop::GetCost()
+{
+	return cost;
+}
+
 
 /*Troop Blueprints*/
 Troop* troopBlueprints[4];
@@ -262,6 +313,8 @@ bool CompEnemyTroopX(Troop* first, Troop* second)
 
 void main()
 {
+	srand(time(0));
+
 	// Create a 3D engine (using TLX engine here) and open a window for it
 	I3DEngine* myEngine = New3DEngine(kTLX);
 	myEngine->StartWindowed();
@@ -275,29 +328,92 @@ void main()
 
 	IMesh* cubeMesh;
 	IMesh* quadMesh;
+	IMesh* skyBoxMesh;
 
 	IModel* quad;
 	IModel* ground;
 	IModel* playerBaseModel;
 	IModel* enemyBaseModel;
+	IModel* quadScene;
+	IModel* skyBox;
 
 	cubeMesh = myEngine->LoadMesh("Cube.x");
 	ground = cubeMesh->CreateModel();
 	ground->SetSkin("Grass1.jpg");
-	ground->ScaleX(15);
+	ground->ScaleX(20);
+	ground->ScaleZ(10);
 
 	playerBaseModel = cubeMesh->CreateModel(-70, 15, 0);
-	playerBaseModel->SetSkin("CueTip.jpg");
-	playerBaseModel->ScaleY(2);
+	playerBaseModel->SetSkin("CueTip2.jpg");
+	playerBaseModel->Scale(2);
 
 	enemyBaseModel = cubeMesh->CreateModel(70, 15, 0);
 	enemyBaseModel->SetSkin("CueMetal.jpg");
 	enemyBaseModel->ScaleY(2);
 
+	skyBoxMesh = myEngine->LoadMesh("Skybox.x");
+	skyBox = skyBoxMesh->CreateModel(0, -500, 0);
+	// --- scene setups for environment such as castle gates ---
+	quadMesh = myEngine->LoadMesh("quad.x");
+
+	// houses 
+	quadScene = quadMesh->CreateModel(20, 10, 10);
+	quadScene->SetSkin("house.png");
+	quadScene->RotateLocalX(180);
+
+
+	quadScene = quadMesh->CreateModel(0, 10, 15);
+	quadScene->SetSkin("house.png");
+	quadScene->RotateLocalX(180);
+
+	quadScene = quadMesh->CreateModel(8, 10, 25);
+	quadScene->SetSkin("house.png");
+	quadScene->RotateLocalX(180);
+
+	quadScene = quadMesh->CreateModel(13, 15, 30);
+	quadScene->SetSkin("house.png");
+	quadScene->RotateLocalX(180);
+	quadScene->Scale(2);
+
+	// baracades
+	// right baracade
+	quadScene = quadMesh->CreateModel(30, 10, -5);
+	quadScene->SetSkin("block.png");
+	quadScene->RotateLocalX(180);
+
+	// left baracade
+	quadScene = quadMesh->CreateModel(-30, 10, -15);
+	quadScene->SetSkin("block.png");
+	quadScene->RotateLocalX(180);
+	quadScene->RotateLocalY(180);
+
+	quadScene = quadMesh->CreateModel(-40, 10, -13);
+	quadScene->SetSkin("block.png");
+	quadScene->RotateLocalX(180);
+	quadScene->RotateLocalY(180);
+
+	// grass 
+	quadScene = quadMesh->CreateModel(40, 10, 10);
+	quadScene->SetSkin("patch.png");
+	quadScene->RotateLocalX(180);
+
+	quadScene = quadMesh->CreateModel(-40, 10, 10);
+	quadScene->SetSkin("patch.png");
+	quadScene->RotateLocalX(180);
+
+	quadScene = quadMesh->CreateModel(-45, 10, 9.999f);
+	quadScene->SetSkin("patch.png");
+	quadScene->RotateLocalX(180);
+
+	//bush
+	quadScene = quadMesh->CreateModel(-15, 10, -8);
+	quadScene->SetSkin("bush.png");
+	quadScene->RotateLocalX(180);
+
 	const float KCubeSpeed = 40.0f; // constant cube travel speed
 	const float kMapLimit = 65.0f; // map limit for the cube t travel 
 	const float kCamSpeed = 50.0f; // speed in which the camera moves
-	const float kStop = 0.0f; 
+	const float kStop = 0.0f;
 
 
 	//timer
@@ -401,29 +517,41 @@ void main()
 			outText << "Enemy Base Health: " << enemyBase->GetHealth() << " / " << enemyBase->GetMaxHealth(); // place holder values 
 			myFont->Draw(outText.str(), 20, 80);
 			outText.str(""); // Clear myStream
+
+			outText << "Resources: " << playerBase->GetResources();
+			myFont->Draw(outText.str(), 20, 100);
+			outText.str(""); // Clear myStream
+
+			outText << "Resources: " << enemyBase->GetResources();
+			myFont->Draw(outText.str(), 20, 120);
+			outText.str(""); // Clear myStream
 		}
-		
+
 		time_t currentTime = time(0);
-		if (myEngine->KeyHit(spawnPlayerTroop) && difftime(currentTime, lastSpawnedSwordsman) > 4) // Key Press 1
+		if (myEngine->KeyHit(spawnPlayerTroop) && difftime(currentTime, lastSpawnedSwordsman) > 4 && playerBase->GetResources() >= 10) // Key Press 1
 		{
+			playerBase->SpendResources(10);
 			lastSpawnedSwordsman = currentTime;
 			Troop* playerTroop = new Troop(Swordsman, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-		if (myEngine->KeyHit(spawnPlayerTroop2) && difftime(currentTime, lastSpawnedArcher) > 6) // Key Press 2
+		if (myEngine->KeyHit(spawnPlayerTroop2) && difftime(currentTime, lastSpawnedArcher) > 6 && playerBase->GetResources() >= 20) // Key Press 2
 		{
+			playerBase->SpendResources(20);
 			lastSpawnedArcher = currentTime;
 			Troop* playerTroop = new Troop(Archer, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-		if (myEngine->KeyHit(spawnPlayerTroop3) && difftime(currentTime, lastSpawnedSpearman) > 10) // Key Press 3
+		if (myEngine->KeyHit(spawnPlayerTroop3) && difftime(currentTime, lastSpawnedSpearman) > 10 && playerBase->GetResources() >= 25) // Key Press 3
 		{
+			playerBase->SpendResources(25);
 			lastSpawnedSpearman = currentTime;
 			Troop* playerTroop = new Troop(Spearman, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
 		}
-		if (myEngine->KeyHit(spawnPlayerTroop4) && difftime(currentTime, lastSpawnedCavalry) > 20) // Key Press 4
+		if (myEngine->KeyHit(spawnPlayerTroop4) && difftime(currentTime, lastSpawnedCavalry) > 20 && playerBase->GetResources() >= 65) // Key Press 4
 		{
+			playerBase->SpendResources(65);
 			lastSpawnedCavalry = currentTime;
 			Troop* playerTroop = new Troop(Cavalry, true, myEngine); // create the player troop
 			playerTroops.push_back(playerTroop); // add the troop to the players troops
@@ -431,36 +559,54 @@ void main()
 
 
 
-		if (myEngine->KeyHit(spawnEnemyTroop) && difftime(currentTime, lastSpawnedSwordsmanE) < 4) // Key Press 7
+		if (myEngine->KeyHit(spawnEnemyTroop) && difftime(currentTime, lastSpawnedSwordsmanE) > 4 && enemyBase->GetResources() >= 10) // Key Press 7
 		{
+			enemyBase->SpendResources(10);
 			lastSpawnedSwordsmanE = currentTime;
 			Troop* enemyTroop = new Troop(Swordsman, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
-		if (myEngine->KeyHit(spawnEnemyTroop2) && difftime(currentTime, lastSpawnedArcherE) < 6) // Key Press 8
+		if (myEngine->KeyHit(spawnEnemyTroop2) && difftime(currentTime, lastSpawnedArcherE) > 6 && enemyBase->GetResources() >= 20) // Key Press 8
 		{
+			enemyBase->SpendResources(20);
 			lastSpawnedArcherE = currentTime;
 			Troop* enemyTroop = new Troop(Archer, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
 
-		if (myEngine->KeyHit(spawnEnemyTroop3) && difftime(currentTime, lastSpawnedSpearmanE) < 10) // Key Press 9
+		if (myEngine->KeyHit(spawnEnemyTroop3) && difftime(currentTime, lastSpawnedSpearmanE) > 10 && enemyBase->GetResources() >= 25) // Key Press 9
 		{
+			enemyBase->SpendResources(25);
 			lastSpawnedSpearmanE = currentTime;
 			Troop* enemyTroop = new Troop(Spearman, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
 
-		if (myEngine->KeyHit(spawnEnemyTroop4) && difftime(currentTime, lastSpawnedCavalryE) > 20) // Key Press 0
+		if (myEngine->KeyHit(spawnEnemyTroop4) && difftime(currentTime, lastSpawnedCavalryE) > 20 && enemyBase->GetResources() >= 65) // Key Press 0
 		{
+			enemyBase->SpendResources(65);
 			lastSpawnedCavalryE = currentTime;
 			Troop* enemyTroop = new Troop(Cavalry, false, myEngine); // create the enemy troop
 			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
 		}
 
 		if (myEngine->KeyHit(statScreen))
+		{
 			if (viewStats) viewStats = false;
 			else viewStats = true;
+		}
+
+		if (difftime(currentTime, enemyBase->GetLastResourceGain()) > 1.0)
+		{
+			enemyBase->GainResources(enemyBase->GetRPS());
+			enemyBase->SetLastResourceGain(currentTime);
+		}
+
+		if (difftime(currentTime, playerBase->GetLastResourceGain()) > 1.0)
+		{
+			playerBase->GainResources(playerBase->GetRPS());
+			playerBase->SetLastResourceGain(currentTime);
+		}
 
 		if (myEngine->KeyHit(extraHealth))
 		{
@@ -486,7 +632,7 @@ void main()
 		{
 			if (enemyTroops.empty()) // if there are no enemies
 			{
-				if ((*it)->GetPosition() < enemyBaseModel->GetX() - (*it)->GetRange())
+				if ((*it)->GetPosition() < static_cast<float>((enemyBaseModel->GetX() - (*it)->GetRange())))
 				{
 					(*it)->Move((*it)->GetSpeed()*frameTime); // move the troop by an amount based on their speed
 				}
@@ -513,6 +659,7 @@ void main()
 						bool died = enemyTroops.front()->TakeDamage((*it)->GetDamage());
 						if (died)
 						{
+							playerBase->GainResources(static_cast<int>(enemyTroops.front()->GetCost() / 10));
 							Troop* temp = enemyTroops.front();
 							temp->GetMesh()->RemoveModel(temp->GetModel());
 							myEngine->RemoveMesh(temp->GetMesh());
@@ -527,12 +674,12 @@ void main()
 			//need to attack enemy troops and base
 		}
 		//all the same stuff as above except the roles are reversed
-		for (it = enemyTroops.begin(); it != enemyTroops.end(); it++) 
+		for (it = enemyTroops.begin(); it != enemyTroops.end(); it++)
 		{
 			if (playerTroops.empty()) // There are no player troops on the field
-			{ 
+			{
 				// Troop is not in range of player base
-				if ((*it)->GetPosition() > playerBaseModel->GetX() + (*it)->GetRange()) 
+				if ((*it)->GetPosition() > playerBaseModel->GetX() + (*it)->GetRange())
 				{
 					(*it)->Move(-(*it)->GetSpeed()*frameTime);
 				}
@@ -561,6 +708,7 @@ void main()
 						bool died = playerTroops.front()->TakeDamage((*it)->GetDamage());
 						if (died)
 						{
+							enemyBase->GainResources(static_cast<int>(playerTroops.front()->GetCost() / 10));
 							Troop* temp = playerTroops.front();
 							temp->GetMesh()->RemoveModel(temp->GetModel());
 							myEngine->RemoveMesh(temp->GetMesh());
