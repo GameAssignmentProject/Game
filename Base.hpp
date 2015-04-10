@@ -15,7 +15,7 @@ public:
 	int GetHealth();
 	void SetMaxHealth(int health);
 	int GetMaxHealth();
-	void TakeDamage(int damage);
+	bool TakeDamage(int damage);
 	void SpendResources(int amount);
 	void GainResources(int amount);
 	bool UpgradeResourceGather();

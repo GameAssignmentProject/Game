@@ -3,10 +3,10 @@
 Base::Base()
 {
 	lastResourceGain = time(0);
-	maxHealth = 100;
+	maxHealth = 5000;
 	currentHealth = maxHealth;
-	resources = 100;
-	rps = 1;
+	resources = 500;
+	rps = 10;
 }
 
 void Base::SetHealth(int health)
@@ -36,13 +36,14 @@ int Base::GetMaxHealth()
 	return maxHealth;
 }
 
-void Base::TakeDamage(int damage)
+bool Base::TakeDamage(int damage)
 {
 	currentHealth -= damage;
 	if (currentHealth <= 0)
 	{
-		currentHealth = 0;
+		return true;
 	}
+	return false;
 }
 
 int Base::GetResources()

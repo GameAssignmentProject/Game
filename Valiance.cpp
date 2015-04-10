@@ -14,13 +14,15 @@ using namespace tle;
 const float CAM_SPEED = 50.0f; // speed in which the camera moves
 
 /*Troop Blueprints*/
-Troop* troopBlueprints[4];
+Troop* troopBlueprints[5];
 
+/*Check which troop is in front of each other*/
 bool CompPlayerTroopX(Troop* first, Troop* second)
 {
 	return (first->GetPosition() > second->GetPosition());
 }
 
+/*Check which troop is in front of each other - reversed to player troops*/
 bool CompEnemyTroopX(Troop* first, Troop* second)
 {
 	return (first->GetPosition() < second->GetPosition());
@@ -33,6 +35,10 @@ void main()
 	////     INITIALISATION
 	////
 	////////////////////////////////////////////////////////////////////////
+
+	//Bases status
+	bool playerBaseDead = false;
+	bool enemyBaseDead = false;
 	
 	//set the seed for any time rand() is called
 	srand(time(0));
@@ -57,26 +63,26 @@ void main()
 	IModel* tempModel; // used to create each model then add to the sceneryModels list
 
 	//Load Meshes
-	cubeMesh = myEngine->LoadMesh("Cube.x");
-	skyBoxMesh = myEngine->LoadMesh("Skybox.x");
-	quadMesh = myEngine->LoadMesh("quad.x");
+	cubeMesh = myEngine->LoadMesh("Meshes\\Cube.x");
+	skyBoxMesh = myEngine->LoadMesh("Meshes\\Skybox.x");
+	quadMesh = myEngine->LoadMesh("Meshes\\quad.x");
 
 	//Create ground
 	tempModel = cubeMesh->CreateModel(0.0f, 0.0f, 0.0f);
-	tempModel->SetSkin("Grass1.jpg");
-	tempModel->ScaleX(20);
+	tempModel->SetSkin("Scenery\\Grass1.jpg");
+	tempModel->ScaleX(30);
 	tempModel->ScaleZ(10);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	//Create the player base
-	playerBaseModel = cubeMesh->CreateModel(-70, 15, 0);
-	playerBaseModel->SetSkin("CueTip2.jpg");
+	playerBaseModel = cubeMesh->CreateModel(-120, 15, 0);
+	playerBaseModel->SetSkin("Scenery\\PlayerBase.jpg");
 	playerBaseModel->Scale(2);
 
 	//Create the enemy base
-	enemyBaseModel = cubeMesh->CreateModel(70, 15, 0);
-	enemyBaseModel->SetSkin("CueMetal.jpg");
-	enemyBaseModel->ScaleY(2);
+	enemyBaseModel = cubeMesh->CreateModel(120, 15, 0);
+	enemyBaseModel->SetSkin("Scenery\\EnemyBase.jpg");
+	enemyBaseModel->Scale(2);
 
 	//Create the skybox
 	tempModel = skyBoxMesh->CreateModel(0, -500, 0);
@@ -84,63 +90,63 @@ void main()
 
 	//Create houses
 	tempModel = quadMesh->CreateModel(20, 10, 10);
-	tempModel->SetSkin("house.png");
+	tempModel->SetSkin("Scenery\\house.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	tempModel = quadMesh->CreateModel(0, 10, 15);
-	tempModel->SetSkin("house.png");
+	tempModel->SetSkin("Scenery\\house.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	tempModel = quadMesh->CreateModel(8, 10, 25);
-	tempModel->SetSkin("house.png");
+	tempModel->SetSkin("Scenery\\house.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	tempModel = quadMesh->CreateModel(13, 15, 30);
-	tempModel->SetSkin("house.png");
+	tempModel->SetSkin("Scenery\\house.png");
 	tempModel->RotateLocalX(180);
 	tempModel->Scale(2);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	// baracades
 	tempModel = quadMesh->CreateModel(30, 10, -5);
-	tempModel->SetSkin("block.png");
+	tempModel->SetSkin("Scenery\\block.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	tempModel = quadMesh->CreateModel(-30, 10, -15);
-	tempModel->SetSkin("block.png");
+	tempModel->SetSkin("Scenery\\block.png");
 	tempModel->RotateLocalX(180);
 	tempModel->RotateLocalY(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	tempModel = quadMesh->CreateModel(-40, 10, -13);
-	tempModel->SetSkin("block.png");
+	tempModel->SetSkin("Scenery\\block.png");
 	tempModel->RotateLocalX(180);
 	tempModel->RotateLocalY(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	// grass 
 	tempModel = quadMesh->CreateModel(40, 10, 10);
-	tempModel->SetSkin("patch.png");
+	tempModel->SetSkin("Scenery\\patch.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	tempModel = quadMesh->CreateModel(-40, 10, 10);
-	tempModel->SetSkin("patch.png");
+	tempModel->SetSkin("Scenery\\patch.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	tempModel = quadMesh->CreateModel(-45, 10, 9.99f);
-	tempModel->SetSkin("patch.png");
+	tempModel->SetSkin("Scenery\\patch.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
 	//bush
 	tempModel = quadMesh->CreateModel(-15, 10, -8);
-	tempModel->SetSkin("bush.png");
+	tempModel->SetSkin("Scenery\\bush.png");
 	tempModel->RotateLocalX(180);
 	sceneryModels.push_back(tempModel); // add to scenery models list to keep track
 
@@ -159,7 +165,8 @@ void main()
 	// Camera
 	ICamera* myCamera;
 	myCamera = myEngine->CreateCamera();
-	myCamera->SetPosition(0, 10, -50);
+	myCamera->SetPosition(0, 20, -49);
+	myCamera->RotateLocalX(10);
 
 	//Key Codes
 	EKeyCode escape = Key_Escape;
@@ -170,40 +177,50 @@ void main()
 	EKeyCode camRotRight = Key_L;
 	EKeyCode camBack = Key_K;
 	EKeyCode statScreen = Key_Comma;
-	EKeyCode spawnEnemyTroop = Key_7;
-	EKeyCode spawnEnemyTroop2 = Key_8;
-	EKeyCode spawnEnemyTroop3 = Key_9;
-	EKeyCode spawnEnemyTroop4 = Key_0;
-	EKeyCode extraHealth = Key_V;
+	EKeyCode spawnEnemyTroop = Key_6;
+	EKeyCode spawnEnemyTroop2 = Key_7;
+	EKeyCode spawnEnemyTroop3 = Key_8;
+	EKeyCode spawnEnemyTroop4 = Key_9;
+	EKeyCode spawnEnemyTroop5 = Key_0;
 
-	// play cam controlls 
+	// play cam controls
 	EKeyCode camLeft = Key_A;
 	EKeyCode camRight = Key_D;
 
 	//spawning troops
-	EKeyCode spawnPlayerTroop = Key_1;
-	EKeyCode spawnPlayerTroop2 = Key_2;
-	EKeyCode spawnPlayerTroop3 = Key_3;
-	EKeyCode spawnPlayerTroop4 = Key_4;
+	EKeyCode spawnSwordsman = Key_1;
+	EKeyCode spawnArcher = Key_2;
+	EKeyCode spawnSpearman = Key_3;
+	EKeyCode spawnCavalry = Key_4;
+	EKeyCode spawnSiegeMachine = Key_5;
 
 	// Tracks the last time a type of unit was produced
 	time_t lastSpawnedSwordsman = 0;
 	time_t lastSpawnedArcher = 0;
 	time_t lastSpawnedSpearman = 0;
 	time_t lastSpawnedCavalry = 0;
+	time_t lastSpawnedSiegeMachine = 0;
 
 	time_t lastSpawnedSwordsmanE = 0;
 	time_t lastSpawnedArcherE = 0;
 	time_t lastSpawnedSpearmanE = 0;
 	time_t lastSpawnedCavalryE = 0;
+	time_t lastSpawnedSiegeMachineE = 0;
 
 	// Troop Handler
 	list<Troop*> playerTroops;
 	list<Troop*> enemyTroops;
 
+	// Setup Blueprints
+	Troop* blueprint;
+	for (int i = Swordsman; i <= SiegeMachine; i++)
+	{
+		blueprint = new Troop(TroopName(i));
+		troopBlueprints[i] = blueprint;
+	}
+
 	//Togglable view of stat screen
 	bool viewStats = false;
-
 	
 	////////////////////////////////////////////////////////////////////////
 	////
@@ -211,7 +228,7 @@ void main()
 	////
 	////////////////////////////////////////////////////////////////////////
 
-	while (myEngine->IsRunning())
+	while (myEngine->IsRunning() || playerBaseDead || enemyBaseDead )
 	{
 		//returns time since last call of Timer()
 		frameTime = myEngine->Timer();
@@ -250,79 +267,105 @@ void main()
 			outText.str(""); // Clear myStream
 		}
 
+		/*Current time of this iteration of the game loop*/
 		time_t currentTime = time(0);
 
+		//if requested to spawn troop, cooldown timer is over, base has enough resources
 		//Spawn Player Swordsman
-		if (myEngine->KeyHit(spawnPlayerTroop) && difftime(currentTime, lastSpawnedSwordsman) > 4 && playerBase->GetResources() >= 10) // Key Press 1
+		if (myEngine->KeyHit(spawnSwordsman) && difftime(currentTime, lastSpawnedSwordsman) > troopBlueprints[Swordsman]->GetCooldown() && playerBase->GetResources() >= troopBlueprints[Swordsman]->GetCost()) // Key Press 1
 		{
-			playerBase->SpendResources(10);
-			lastSpawnedSwordsman = currentTime;
-			Troop* playerTroop = new Troop(Swordsman, true, myEngine); // create the player troop
-			playerTroops.push_back(playerTroop); // add the troop to the players troops
+			playerBase->SpendResources(troopBlueprints[Swordsman]->GetCost()); // Base loses resources
+			lastSpawnedSwordsman = currentTime; // reset the cooldown timer for player swordsman
+			Troop* tempTroop = new Troop(troopBlueprints[Swordsman]); // Create the base stats for the troop from the blueprint of a swordsman
+			tempTroop->SpawnTroop(true, myEngine, quadMesh); // Spawn the troop created above
+			playerTroops.push_back(tempTroop); // add the troop to the players troops
 		}
 		//Spawn Player Archer
-		if (myEngine->KeyHit(spawnPlayerTroop2) && difftime(currentTime, lastSpawnedArcher) > 6 && playerBase->GetResources() >= 20) // Key Press 2
+		if (myEngine->KeyHit(spawnArcher) && difftime(currentTime, lastSpawnedArcher) > troopBlueprints[Archer]->GetCooldown() && playerBase->GetResources() >= troopBlueprints[Archer]->GetCost()) // Key Press 2
 		{
-			playerBase->SpendResources(20);
+			playerBase->SpendResources(troopBlueprints[Archer]->GetCost());
 			lastSpawnedArcher = currentTime;
-			Troop* playerTroop = new Troop(Archer, true, myEngine); // create the player troop
-			playerTroops.push_back(playerTroop); // add the troop to the players troops
+			Troop* tempTroop = new Troop(troopBlueprints[Archer]);
+			tempTroop->SpawnTroop(true, myEngine, quadMesh);
+			playerTroops.push_back(tempTroop); // add the troop to the players troops
 		}
 		//Spawn Player Spearman
-		if (myEngine->KeyHit(spawnPlayerTroop3) && difftime(currentTime, lastSpawnedSpearman) > 10 && playerBase->GetResources() >= 25) // Key Press 3
+		if (myEngine->KeyHit(spawnSpearman) && difftime(currentTime, lastSpawnedSpearman) > troopBlueprints[Spearman]->GetCooldown() && playerBase->GetResources() >= troopBlueprints[Spearman]->GetCost()) // Key Press 3
 		{
-			playerBase->SpendResources(25);
+			playerBase->SpendResources(troopBlueprints[Spearman]->GetCost());
 			lastSpawnedSpearman = currentTime;
-			Troop* playerTroop = new Troop(Spearman, true, myEngine); // create the player troop
-			playerTroops.push_back(playerTroop); // add the troop to the players troops
+			Troop* tempTroop = new Troop(troopBlueprints[Spearman]);
+			tempTroop->SpawnTroop(true, myEngine, quadMesh);
+			playerTroops.push_back(tempTroop); // add the troop to the players troops
 		}
 		//Spawn Player Cavalry
-		if (myEngine->KeyHit(spawnPlayerTroop4) && difftime(currentTime, lastSpawnedCavalry) > 20 && playerBase->GetResources() >= 65) // Key Press 4
+		if (myEngine->KeyHit(spawnCavalry) && difftime(currentTime, lastSpawnedCavalry) > troopBlueprints[Cavalry]->GetCooldown() && playerBase->GetResources() >= troopBlueprints[Cavalry]->GetCost()) // Key Press 4
 		{
-			playerBase->SpendResources(65);
+			playerBase->SpendResources(troopBlueprints[Cavalry]->GetCost());
 			lastSpawnedCavalry = currentTime;
-			Troop* playerTroop = new Troop(Cavalry, true, myEngine); // create the player troop
-			playerTroops.push_back(playerTroop); // add the troop to the players troops
+			Troop* tempTroop = new Troop(troopBlueprints[Cavalry]);
+			tempTroop->SpawnTroop(true, myEngine, quadMesh);
+			playerTroops.push_back(tempTroop); // add the troop to the players troops
+		}
+		//Spawn Player Siege Machine
+		if (myEngine->KeyHit(spawnSiegeMachine) && difftime(currentTime, lastSpawnedSiegeMachine) > troopBlueprints[SiegeMachine]->GetCooldown() && playerBase->GetResources() >= troopBlueprints[SiegeMachine]->GetCost()) // Key Press 5
+		{
+			playerBase->SpendResources(troopBlueprints[SiegeMachine]->GetCost());
+			lastSpawnedSiegeMachine = currentTime;
+			Troop* tempTroop = new Troop(troopBlueprints[SiegeMachine]);
+			tempTroop->SpawnTroop(true, myEngine, quadMesh);
+			playerTroops.push_back(tempTroop); // add the troop to the players troops
 		}
 
 		//Spawn Enemy Swordsman
-		if (myEngine->KeyHit(spawnEnemyTroop) && difftime(currentTime, lastSpawnedSwordsmanE) > 4 && enemyBase->GetResources() >= 10) // Key Press 7
+		if (myEngine->KeyHit(spawnEnemyTroop) && difftime(currentTime, lastSpawnedSwordsmanE) > troopBlueprints[Swordsman]->GetCooldown() && enemyBase->GetResources() >= troopBlueprints[Swordsman]->GetCost()) // Key Press 6
 		{
-			enemyBase->SpendResources(10);
+			enemyBase->SpendResources(troopBlueprints[Swordsman]->GetCost());
 			lastSpawnedSwordsmanE = currentTime;
-			Troop* enemyTroop = new Troop(Swordsman, false, myEngine); // create the enemy troop
-			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
+			Troop* tempTroop = new Troop(troopBlueprints[Swordsman]);
+			tempTroop->SpawnTroop(false, myEngine, quadMesh);
+			enemyTroops.push_back(tempTroop); // add the troop to the enemy troops
 		}
 		//Spawn Enemy Archer
-		if (myEngine->KeyHit(spawnEnemyTroop2) && difftime(currentTime, lastSpawnedArcherE) > 6 && enemyBase->GetResources() >= 20) // Key Press 8
+		if (myEngine->KeyHit(spawnEnemyTroop2) && difftime(currentTime, lastSpawnedArcherE) > troopBlueprints[Archer]->GetCooldown() && enemyBase->GetResources() >= troopBlueprints[Archer]->GetCost()) // Key Press 7
 		{
-			enemyBase->SpendResources(20);
+			enemyBase->SpendResources(troopBlueprints[Archer]->GetCost());
 			lastSpawnedArcherE = currentTime;
-			Troop* enemyTroop = new Troop(Archer, false, myEngine); // create the enemy troop
-			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
+			Troop* tempTroop = new Troop(troopBlueprints[Archer]);
+			tempTroop->SpawnTroop(false, myEngine, quadMesh);
+			enemyTroops.push_back(tempTroop); // add the troop to the enemy troops
 		}
 		//Spawn Enemy Spearman
-		if (myEngine->KeyHit(spawnEnemyTroop3) && difftime(currentTime, lastSpawnedSpearmanE) > 10 && enemyBase->GetResources() >= 25) // Key Press 9
+		if (myEngine->KeyHit(spawnEnemyTroop3) && difftime(currentTime, lastSpawnedSpearmanE) > troopBlueprints[Spearman]->GetCooldown() && enemyBase->GetResources() >= troopBlueprints[Spearman]->GetCost()) // Key Press 8
 		{
-			enemyBase->SpendResources(25);
+			enemyBase->SpendResources(troopBlueprints[Spearman]->GetCost());
 			lastSpawnedSpearmanE = currentTime;
-			Troop* enemyTroop = new Troop(Spearman, false, myEngine); // create the enemy troop
-			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
+			Troop* tempTroop = new Troop(troopBlueprints[Spearman]);
+			tempTroop->SpawnTroop(false, myEngine, quadMesh);
+			enemyTroops.push_back(tempTroop); // add the troop to the enemy troops
 		}
 		//Spawn Enemy Cavalry
-		if (myEngine->KeyHit(spawnEnemyTroop4) && difftime(currentTime, lastSpawnedCavalryE) > 20 && enemyBase->GetResources() >= 65) // Key Press 0
+		if (myEngine->KeyHit(spawnEnemyTroop4) && difftime(currentTime, lastSpawnedCavalryE) > troopBlueprints[Cavalry]->GetCooldown() && enemyBase->GetResources() >= troopBlueprints[Cavalry]->GetCost()) // Key Press 9
 		{
-			enemyBase->SpendResources(65);
+			enemyBase->SpendResources(troopBlueprints[Cavalry]->GetCost());
 			lastSpawnedCavalryE = currentTime;
-			Troop* enemyTroop = new Troop(Cavalry, false, myEngine); // create the enemy troop
-			enemyTroops.push_back(enemyTroop); // add the troop to the enemy troops
+			Troop* tempTroop = new Troop(troopBlueprints[Cavalry]);
+			tempTroop->SpawnTroop(false, myEngine, quadMesh);
+			enemyTroops.push_back(tempTroop); // add the troop to the enemy troops
+		}
+		if (myEngine->KeyHit(spawnEnemyTroop5) && difftime(currentTime, lastSpawnedSiegeMachineE) > troopBlueprints[SiegeMachine]->GetCooldown() && enemyBase->GetResources() >= troopBlueprints[SiegeMachine]->GetCost()) //Key Press 0
+		{
+			enemyBase->SpendResources(troopBlueprints[SiegeMachine]->GetCost());
+			lastSpawnedCavalryE = currentTime;
+			Troop* tempTroop = new Troop(troopBlueprints[SiegeMachine]);
+			tempTroop->SpawnTroop(false, myEngine, quadMesh);
+			enemyTroops.push_back(tempTroop); // add the troop to the enemy troops
 		}
 
 		//Toggle Stat Screen
 		if (myEngine->KeyHit(statScreen))
 		{
-			if (viewStats) viewStats = false;
-			else viewStats = true;
+			viewStats = !viewStats;
 		}
 
 		// Player Base Resource Gain
@@ -339,17 +382,6 @@ void main()
 			enemyBase->SetLastResourceGain(currentTime);
 		}
 
-		// Increase the health of the player base - Will be removed after further development
-		if (myEngine->KeyHit(extraHealth))
-		{
-			int currentMax = playerBase->GetMaxHealth();
-			int newMax = currentMax*1.5;
-			int currentHealth = playerBase->GetMaxHealth();
-			int newHealth = currentHealth + (newMax - currentMax);
-			playerBase->SetMaxHealth(newMax);
-			playerBase->SetHealth(newHealth);
-		}
-
 		// Sort the troops based on their x coordinates to determine who is at the front
 		if (difftime(time(NULL), lastTroopSort)>1) {
 			playerTroops.sort(CompPlayerTroopX);
@@ -359,9 +391,9 @@ void main()
 		//loop trough player troops
 		for (auto theTroop : playerTroops)
 		{
-			if (enemyTroops.empty()) // if there are no enemies
+			if (enemyTroops.empty() || theTroop->GetPosition() > (enemyBaseModel->GetX() - 8) - theTroop->GetRange()) // if there are no enemies
 			{
-				if (theTroop->GetPosition() < static_cast<float>((enemyBaseModel->GetX() - theTroop->GetRange())))
+				if (theTroop->GetPosition() < static_cast<float>(((enemyBaseModel->GetX() - 8) - theTroop->GetRange())))
 				{
 					theTroop->Move(theTroop->GetSpeed()*frameTime); // move the troop by an amount based on their speed
 				}
@@ -385,13 +417,12 @@ void main()
 					if (difftime(currentTime, theTroop->GetLastAttack()) > 1)
 					{
 						theTroop->SetLastAttack(currentTime);
-						bool died = enemyTroops.front()->TakeDamage(theTroop->GetDamage());
+						bool died = enemyTroops.front()->TakeDamage(theTroop);
 						if (died)
 						{
 							playerBase->GainResources(static_cast<int>(enemyTroops.front()->GetCost() / 10));
 							Troop* temp = enemyTroops.front();
-							temp->GetMesh()->RemoveModel(temp->GetModel());
-							myEngine->RemoveMesh(temp->GetMesh());
+							quadMesh->RemoveModel(temp->GetModel());
 							enemyTroops.pop_front();
 							delete temp;
 						}
@@ -403,12 +434,12 @@ void main()
 		//all the same stuff as above except the roles are reversed
 		for (auto theTroop : enemyTroops)
 		{
-			if (playerTroops.empty()) // There are no player troops on the field
+			if (playerTroops.empty() || theTroop->GetPosition() < (playerBaseModel->GetX() + 8) + theTroop->GetRange()) // There are no player troops on the field || can attack the base
 			{
 				// Troop is not in range of player base
-				if (theTroop->GetPosition() > playerBaseModel->GetX() + theTroop->GetRange())
+				if (theTroop->GetPosition() > (playerBaseModel->GetX() + 8) + theTroop->GetRange())
 				{
-					theTroop->Move(-theTroop->GetSpeed()*frameTime);
+					theTroop->Move(theTroop->GetSpeed()*frameTime);
 				}
 				else // Troop is in range of player base
 				{
@@ -424,21 +455,19 @@ void main()
 				//Enemy troop is out of range of player troop
 				if (theTroop->GetPosition() - playerTroops.front()->GetPosition() > theTroop->GetRange())
 				{
-					theTroop->Move(-theTroop->GetSpeed()*frameTime);
-					//(*it)->GetHealth(); // commented because i dont know what this is for
+					theTroop->Move(theTroop->GetSpeed()*frameTime);
 				}
 				else // Enemy troop is in range of player troop
 				{
 					if (difftime(currentTime, theTroop->GetLastAttack()) > 1)
 					{
 						theTroop->SetLastAttack(currentTime);
-						bool died = playerTroops.front()->TakeDamage(theTroop->GetDamage());
+						bool died = playerTroops.front()->TakeDamage(theTroop);
 						if (died)
 						{
 							enemyBase->GainResources(static_cast<int>(playerTroops.front()->GetCost() / 10));
 							Troop* temp = playerTroops.front();
-							temp->GetMesh()->RemoveModel(temp->GetModel());
-							myEngine->RemoveMesh(temp->GetMesh());
+							quadMesh->RemoveModel(temp->GetModel());
 							playerTroops.pop_front();
 							delete temp;
 						}

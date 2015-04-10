@@ -1,73 +1,106 @@
 #include "Troop.hpp"
 
-
-Troop::Troop(TroopName name, bool playerMade, I3DEngine* theEngine)
+Troop::Troop(TroopName name)
 {
-	troopMesh = theEngine->LoadMesh("quad.x");
-	if (playerMade)
-	{
-		troopModel = troopMesh->CreateModel(-70, 10, 0); // -60, 10, 0, spawning location for player base
-	}
-	else
-	{
-		troopModel = troopMesh->CreateModel(70, 10, 0); // 60, 10, 0, spawning location for enemy base
-		troopModel->RotateLocalY(180);
-	}
-	troopModel->RotateLocalX(180);
-	playerOwned = playerMade;
-	lastAttack = time(0);
 	switch (name) // from the type, determine the stats of the troop
 	{
 	case Swordsman:
-		playerOwned = playerMade;
-		troopModel->SetSkin("Swordsman.png");
-		troopModel->SetLocalZ(0.1);
-		maxHealth = 40;
-		currentHealth = maxHealth;
-		damage = 8;
-		speed = 3;
+		theName = Swordsman;
+		maxHealth = 150;
+		damage = 10;
+		cost = 100;
+		cooldown = 2;
+		speed = 5;
 		range = 10;
-		cost = 10;
+		effectiveAgainst = Archer;
 		break;
 	case Archer:
-		playerOwned = playerMade;
-		troopModel->SetSkin("Archer.png");
-		troopModel->SetLocalZ(0.2);
-		maxHealth = 20;
-		currentHealth = maxHealth;
-		damage = 5;
-		speed = 5;
-		range = 20;
-		cost = 20;
+		theName = Archer;
+		maxHealth = 100;
+		damage = 8;
+		cost = 150;
+		cooldown = 3;
+		speed = 7;
+		range = 30;
+		effectiveAgainst = Spearman;
 		break;
 	case Spearman:
-		playerOwned = playerMade;
-		troopModel->SetSkin("Spearman.png");
-		troopModel->SetLocalZ(0.3);
-		maxHealth = 25;
-		currentHealth = maxHealth;
-		damage = 12;
-		speed = 2;
+		theName = Spearman;
+		maxHealth = 150;
+		damage = 15;
+		cost = 250;
+		cooldown = 5;
+		speed = 4;
 		range = 15;
-		cost = 25;
+		effectiveAgainst = Cavalry;
 		break;
 	case Cavalry:
-		playerOwned = playerMade;
-		troopModel->SetSkin("Cavalry.jpg");
-		troopModel->SetLocalZ(0.4);
-		maxHealth = 60;
-		currentHealth = maxHealth;
+		theName = Cavalry;
+		maxHealth = 500;
 		damage = 15;
-		speed = 8;
+		cost = 500;
+		cooldown = 15;
+		speed = 10;
 		range = 12;
-		cost = 65;
+		effectiveAgainst = Swordsman;
 		break;
+	case SiegeMachine:
+		theName = SiegeMachine;
+		maxHealth = 1000;
+		damage = 100;
+		cost = 1000;
+		cooldown = 30;
+		speed = 2;
+		range = 5;
 	}
+	currentHealth = maxHealth;
 }
 
-IMesh* Troop::GetMesh()
+Troop::Troop(Troop* theBlueprint)
 {
-	return troopMesh;
+	theName = theBlueprint->GetName();
+	maxHealth = theBlueprint->GetMaxHealth();
+	currentHealth = theBlueprint->GetHealth();
+	damage = theBlueprint->GetDamage();
+	cost = theBlueprint->GetCost();
+	cooldown = theBlueprint->GetCooldown();
+	speed = theBlueprint->GetSpeed();
+	range = theBlueprint->GetRange();
+	effectiveAgainst = theBlueprint->GetEffective();
+	lastAttack = 0;
+}
+
+void Troop::SpawnTroop(bool playerMade, I3DEngine* theEngine, IMesh* troopMesh)
+{
+	playerOwned = playerMade;
+	if (playerMade) // if the player owns the new troop
+	{
+		troopModel = troopMesh->CreateModel(-120, 10, 0);
+	}
+	else // if the enemy owns the new troop
+	{
+		troopModel = troopMesh->CreateModel(120, 10, 0);
+		troopModel->RotateLocalY(180);
+	}
+	switch (theName)
+	{
+	case Swordsman:
+		troopModel->SetSkin("Troops\\Swordsman\\Swordsman.png");
+		break;
+	case Archer:
+		troopModel->SetSkin("Troops\\Archer\\Archer.png");
+		break;
+	case Spearman:
+		troopModel->SetSkin("Troops\\Spearman\\Spearman.png");
+		break;
+	case Cavalry:
+		troopModel->SetSkin("Troops\\Cavalry\\Cavalry.png");
+		break;
+	case SiegeMachine:
+		troopModel->SetSkin("Troops\\SiegeMachine\\SiegeMachine.png");
+		break;
+	}
+	troopModel->RotateLocalX(180);
 }
 
 IModel* Troop::GetModel()
@@ -78,27 +111,62 @@ IModel* Troop::GetModel()
 /*Move the troop by the amount along the x (along the map)*/
 void Troop::Move(float x)
 {
-	troopModel->MoveX(x);
+	troopModel->MoveLocalX(x);
 }
 /*Returns the value of the troops position on the x*/
 float Troop::GetPosition()
 {
 	return troopModel->GetX();
 }
-/*Returns the speed of the troop, used when moving the unit*/
-int Troop::GetSpeed()
+
+/*Returns the troop type of the troop, used to determine if it is weak against certain unit*/
+TroopName Troop::GetName()
 {
-	return speed;
+	return theName;
 }
+
+/*Sets the current health of the troop, if the value passes is more than max health then the health is set to max health*/
+void Troop::SetHealth(int health)
+{
+	if (health > maxHealth)
+	{
+		currentHealth = maxHealth;
+	}
+	else
+	{
+		currentHealth = health;
+	}
+}
+
+/*Gets the max health of the troop*/
+int Troop::GetMaxHealth()
+{
+	return maxHealth;
+}
+
 /* returns the health of each unit*/
 int Troop::GetHealth()
 {
 	return currentHealth;
 }
 
-bool Troop::TakeDamage(int damage)
+/*Calculates the new health of the troop after recieving damage amount
+  if the troop has 0 or less health after being damaged, returns true
+  indicating death of the troop else returns false*/
+bool Troop::TakeDamage(Troop* attacker)
 {
-	currentHealth -= damage;
+	if (attacker->GetEffective() == theName)
+	{
+		currentHealth -= attacker->GetDamage() * 3;
+	}
+	else if (effectiveAgainst == attacker->GetName())
+	{
+		currentHealth -= attacker->GetDamage() / 3;
+	}
+	else
+	{
+		currentHealth -= attacker->GetDamage();
+	}
 	if (currentHealth <= 0)
 	{
 		currentHealth = 0;
@@ -107,28 +175,63 @@ bool Troop::TakeDamage(int damage)
 	return false;
 }
 
+/*Only to be used for the blueprint troops
+  Upgrades the troop type to have better stats*/
+bool Troop::UpgradeTroop()
+{
+	return false;
+}
+
+/*Returns the amount of damage that a troop will do against the enemy*/
 int Troop::GetDamage()
 {
 	return damage;
 }
 
-/* returns the range of each type of unit*/
+/*Returns the cost of spawning the unit*/
+int Troop::GetCost()
+{
+	return cost;
+}
+
+/*Returns the amount of time in seconds needed to wait between each spawn of the type of troop*/
+int Troop::GetCooldown()
+{
+	return cooldown;
+}
+
+/*Returns the speed of the troop, used when moving the unit*/
+int Troop::GetSpeed()
+{
+	return speed;
+}
+
+/*Returns the range of each type of unit*/
 int Troop::GetRange()
 {
 	return range;
 }
 
+/*Returns the troop type which the current troop is effective against*/
+TroopName Troop::GetEffective()
+{
+	return effectiveAgainst;
+}
+
+/*Only used for archers, instead of damaging units directly, the archer fires an arrow which does damage on collision*/
+void Troop::Fire()
+{
+
+}
+
+/*Returns the time when the troop attacked last*/
 time_t Troop::GetLastAttack()
 {
 	return lastAttack;
 }
 
+/*Sets the time the troop last attacked*/
 void Troop::SetLastAttack(time_t theTime)
 {
 	lastAttack = theTime;
-}
-
-int Troop::GetCost()
-{
-	return cost;
 }
