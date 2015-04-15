@@ -46,11 +46,6 @@ bool Base::TakeDamage(int damage)
 	return false;
 }
 
-int Base::GetResources()
-{
-	return resources;
-}
-
 void Base::SpendResources(int amount)
 {
 	resources -= amount;
@@ -59,6 +54,31 @@ void Base::SpendResources(int amount)
 void Base::GainResources(int amount)
 {
 	resources += amount;
+}
+
+bool Base::UpgradeResourceGather()
+{
+	return false;
+}
+
+bool Base::UpgradeBaseHealth()
+{
+	return false;
+}
+
+int Base::GetNumWeapons()
+{
+	return 0;
+}
+
+bool Base::PurchaseWeapon()
+{
+	return false;
+}
+
+int Base::GetResources()
+{
+	return resources;
 }
 
 time_t Base::GetLastResourceGain()

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <TL-Engine.h>
 #include <ctime>
 
@@ -26,6 +27,7 @@ private:
 	int currentHealth; // the current health of each unit
 	int damage; // the set amount of damage a particular troop will do
 	int cost; // resources cost of each troop
+	int upgradeCost; // resources cost to upgrade the troop to higher stats.
 	int cooldown; // amount of time between spawning of the units
 	int speed; // movement speed
 	int range; // distance at which the troop will begin attacking

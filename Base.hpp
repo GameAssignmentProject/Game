@@ -1,5 +1,9 @@
 #pragma once
+
+#include "TL-Engine.h"
 #include <ctime>
+
+using namespace tle;
 
 class Base {
 private:
@@ -10,7 +14,6 @@ private:
 	int rps; // resources gained per second
 public:
 	Base();
-	~Base();
 	void SetHealth(int health);
 	int GetHealth();
 	void SetMaxHealth(int health);

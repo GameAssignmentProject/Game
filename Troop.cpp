@@ -60,7 +60,7 @@ Troop::Troop(Troop* theBlueprint)
 {
 	theName = theBlueprint->GetName();
 	maxHealth = theBlueprint->GetMaxHealth();
-	currentHealth = theBlueprint->GetHealth();
+	currentHealth = maxHealth;
 	damage = theBlueprint->GetDamage();
 	cost = theBlueprint->GetCost();
 	cooldown = theBlueprint->GetCooldown();
@@ -73,13 +73,14 @@ Troop::Troop(Troop* theBlueprint)
 void Troop::SpawnTroop(bool playerMade, I3DEngine* theEngine, IMesh* troopMesh)
 {
 	playerOwned = playerMade;
+	float zFightEliminator = static_cast<float>(rand()) / static_cast<float>(RAND_MAX / 10); // 0.05
 	if (playerMade) // if the player owns the new troop
 	{
-		troopModel = troopMesh->CreateModel(-120, 10, 0);
+		troopModel = troopMesh->CreateModel(-120, 10, zFightEliminator - 5);
 	}
 	else // if the enemy owns the new troop
 	{
-		troopModel = troopMesh->CreateModel(120, 10, 0);
+		troopModel = troopMesh->CreateModel(120, 10, zFightEliminator + 5);
 		troopModel->RotateLocalY(180);
 	}
 	switch (theName)
@@ -157,15 +158,19 @@ bool Troop::TakeDamage(Troop* attacker)
 {
 	if (attacker->GetEffective() == theName)
 	{
-		currentHealth -= attacker->GetDamage() * 3;
+		currentHealth -= attacker->GetDamage() * 3; // Triple damage from units effective against itself
 	}
 	else if (effectiveAgainst == attacker->GetName())
 	{
-		currentHealth -= attacker->GetDamage() / 3;
+		currentHealth -= attacker->GetDamage() / 3; // Third damage from units effective against
+	}
+	else if (attacker->GetName() == SiegeMachine)
+	{
+		//No damage is done by siege machine to troops
 	}
 	else
 	{
-		currentHealth -= attacker->GetDamage();
+		currentHealth -= attacker->GetDamage(); // Normal damage for all other cases
 	}
 	if (currentHealth <= 0)
 	{
@@ -179,6 +184,11 @@ bool Troop::TakeDamage(Troop* attacker)
   Upgrades the troop type to have better stats*/
 bool Troop::UpgradeTroop()
 {
+	maxHealth *= 2;
+	currentHealth = maxHealth;
+	damage *= 2;
+	cost = static_cast<int>(cost*1.5f);
+	cooldown = static_cast<int>(cooldown*1.5f);
 	return false;
 }
 
