@@ -12,6 +12,7 @@ Troop::Troop(TroopName name)
 		cooldown = 2;
 		speed = 5;
 		range = 10;
+		upgradeCost = 500;
 		effectiveAgainst = Archer;
 		break;
 	case Archer:
@@ -22,6 +23,7 @@ Troop::Troop(TroopName name)
 		cooldown = 3;
 		speed = 7;
 		range = 30;
+		upgradeCost = 750;
 		effectiveAgainst = Spearman;
 		break;
 	case Spearman:
@@ -32,6 +34,7 @@ Troop::Troop(TroopName name)
 		cooldown = 5;
 		speed = 4;
 		range = 15;
+		upgradeCost = 1250;
 		effectiveAgainst = Cavalry;
 		break;
 	case Cavalry:
@@ -42,6 +45,7 @@ Troop::Troop(TroopName name)
 		cooldown = 15;
 		speed = 10;
 		range = 12;
+		upgradeCost = 2500;
 		effectiveAgainst = Swordsman;
 		break;
 	case SiegeMachine:
@@ -52,8 +56,10 @@ Troop::Troop(TroopName name)
 		cooldown = 30;
 		speed = 2;
 		range = 5;
+		upgradeCost = 5000;
 	}
 	currentHealth = maxHealth;
+	stage = 0;
 }
 
 Troop::Troop(Troop* theBlueprint)
@@ -180,6 +186,17 @@ bool Troop::TakeDamage(Troop* attacker)
 	return false;
 }
 
+bool Troop::TakeDamage(int damage)
+{
+	currentHealth -= damage; // Normal damage for all other cases
+	if (currentHealth <= 0)
+	{
+		currentHealth = 0;
+		return true;
+	}
+	return false;
+}
+
 /*Only to be used for the blueprint troops
   Upgrades the troop type to have better stats*/
 bool Troop::UpgradeTroop()
@@ -189,7 +206,15 @@ bool Troop::UpgradeTroop()
 	damage *= 2;
 	cost = static_cast<int>(cost*1.5f);
 	cooldown = static_cast<int>(cooldown*1.5f);
-	return false;
+	upgradeCost = static_cast<int>(upgradeCost * 2.5);
+	stage++;
+	return true;
+}
+
+/*Returns the cost of upgrading the troop*/
+int Troop::GetUpgradeCost()
+{
+	return upgradeCost;
 }
 
 /*Returns the amount of damage that a troop will do against the enemy*/
@@ -244,4 +269,9 @@ time_t Troop::GetLastAttack()
 void Troop::SetLastAttack(time_t theTime)
 {
 	lastAttack = theTime;
+}
+
+int Troop::GetStage()
+{
+	return stage;
 }

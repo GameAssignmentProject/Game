@@ -5,8 +5,11 @@ Base::Base()
 	lastResourceGain = time(0);
 	maxHealth = 5000;
 	currentHealth = maxHealth;
-	resources = 500;
+	resources = 1000;
 	rps = 10;
+	numWeapons = 0;
+	healthUpgradeCost = 500;
+	rpsUpgradeCost = 500;
 }
 
 void Base::SetHealth(int health)
@@ -58,17 +61,38 @@ void Base::GainResources(int amount)
 
 bool Base::UpgradeResourceGather()
 {
-	return false;
+	rps += 10;
+	rpsUpgradeCost *= 2;
+	return true;
 }
 
 bool Base::UpgradeBaseHealth()
 {
-	return false;
+	int increaseAmount = static_cast<int>(maxHealth * 0.5);
+	maxHealth += increaseAmount;
+	currentHealth += increaseAmount;
+	healthUpgradeCost *= 2;
+	return true;
+}
+
+int Base::GetHealthUpgradeCost()
+{
+	return healthUpgradeCost;
+}
+
+int Base::GetRPSUpgradeCost()
+{
+	return rpsUpgradeCost;
 }
 
 int Base::GetNumWeapons()
 {
-	return 0;
+	return numWeapons;
+}
+
+void Base::SetNumWeapons(int num)
+{
+	numWeapons = num;
 }
 
 bool Base::PurchaseWeapon()
