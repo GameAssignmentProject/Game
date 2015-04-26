@@ -7,11 +7,11 @@ BaseWeapon::BaseWeapon(IMesh* theMesh, bool thePlayer)
 	playerOwned = thePlayer;
 	if (playerOwned)
 	{
-		ballistaModel = theMesh->CreateModel(-108, 30, -2.5f);
+		ballistaModel = theMesh->CreateModel(-110, 29, -2.5f);
 	}
 	else
 	{
-		ballistaModel = theMesh->CreateModel(108, 30, 2.5f);
+		ballistaModel = theMesh->CreateModel(110, 29, 2.5f);
 		ballistaModel->RotateLocalY(180);
 	}
 	ballistaModel->SetSkin("Troops\\Ballista\\Ballista.png");
