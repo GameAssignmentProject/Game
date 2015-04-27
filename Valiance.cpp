@@ -4,6 +4,7 @@
 #include <sstream>
 #include <ctime>
 #include <cstdlib>
+#include <vector>
 #include "Troop.hpp"
 #include "Base.hpp"
 #include "BaseWeapon.hpp"
@@ -116,7 +117,7 @@ void main()
 	//Bases status
 	bool playerBaseDead = false;
 	bool enemyBaseDead = false;
-	
+
 	//set the seed for any time rand() is called
 	srand(time(0));
 
@@ -149,7 +150,13 @@ void main()
 	IModel* playerBaseModel;
 	IModel* enemyBaseModel;
 	IModel* tempModel; // used to create each model then add to the sceneryModels list
+	IModel* bloodModel; // used to spawn a blood particle
+	IModel* brickModel;
 
+	vector <IModel*> BloodVec;
+	vector <IModel*> BaseVec;
+	int bloodspot = 0;
+	int limit = 10;
 	//Load Meshes
 	cubeMesh = myEngine->LoadMesh("Meshes\\Cube.x");
 	skyBoxMesh = myEngine->LoadMesh("Meshes\\Skybox.x");
@@ -338,14 +345,14 @@ void main()
 	time_t changeDecisionTimer = 0; // if unit decided but been 10 seconds, redecide, may still choose unit already picked
 
 
-	
+
 	////////////////////////////////////////////////////////////////////////
 	////
 	////     GAME LOOP
 	////
 	////////////////////////////////////////////////////////////////////////
 
-	while (myEngine->IsRunning() || playerBaseDead || enemyBaseDead )
+	while (myEngine->IsRunning() || playerBaseDead || enemyBaseDead)
 	{
 		//returns time since last call of Timer()
 		frameTime = myEngine->Timer();
@@ -389,7 +396,7 @@ void main()
 
 		//if requested to spawn troop, cooldown timer is over, base has enough resources
 		//Spawn Player Swordsman
-		if (myEngine->KeyHit(spawnSwordsman) && difftime(currentTime, lastSpawnedSwordsman) > playerBlueprints[Swordsman]->GetCooldown() && playerBase->GetResources() >=playerBlueprints[Swordsman]->GetCost()) // Key Press 1
+		if (myEngine->KeyHit(spawnSwordsman) && difftime(currentTime, lastSpawnedSwordsman) > playerBlueprints[Swordsman]->GetCooldown() && playerBase->GetResources() >= playerBlueprints[Swordsman]->GetCost()) // Key Press 1
 		{
 			playerBase->SpendResources(playerBlueprints[Swordsman]->GetCost()); // Base loses resources
 			lastSpawnedSwordsman = currentTime; // reset the cooldown timer for player swordsman
@@ -433,7 +440,7 @@ void main()
 			tempTroop->SpawnTroop(true, myEngine, quadMesh);
 			playerTroops.push_back(tempTroop); // add the troop to the players troops
 		}
-		
+
 
 		//Upgrade if key pressed & base has enough resources
 		//Upgrade Swordsman
@@ -493,7 +500,7 @@ void main()
 			playerBase->SpendResources(1000);
 			playerBaseWeapon->UpgradeBaseWeapon();
 		}
-		
+
 		//Toggle Stat Screen
 		if (myEngine->KeyHit(statScreen))
 		{
@@ -534,6 +541,19 @@ void main()
 					{
 						theTroop->SetLastAttack(currentTime);
 						enemyBase->TakeDamage(theTroop->GetDamage());
+
+						if (BaseVec.size() < limit)
+						{
+							brickModel = quadMesh->CreateModel(enemyBaseModel->GetX(), 20, -20);
+							BaseVec.push_back(brickModel);
+							brickModel->SetSkin("Media\\Owch.jpg");
+							brickModel->Scale(0.5);
+						}
+						else
+						{
+							quadMesh->RemoveModel(BaseVec[0]);
+							BaseVec.erase(BaseVec.begin());
+						}
 					}
 				}
 			}
@@ -549,6 +569,19 @@ void main()
 					{
 						theTroop->SetLastAttack(currentTime);
 						bool died = enemyTroops.front()->TakeDamage(theTroop);
+						if (BloodVec.size() < limit)
+						{
+							float spawnPos = enemyTroops.front()->GetPosition();
+							bloodModel = quadMesh->CreateModel(spawnPos, 10, 1);
+							BloodVec.push_back(bloodModel);
+							bloodModel->SetSkin("Media\\Cacodemon_tlxcutout.png");
+							bloodModel->Scale(0.5);
+						}
+						else
+						{
+							quadMesh->RemoveModel(BloodVec[0]);
+							BloodVec.erase(BloodVec.begin());
+						}
 						if (died)
 						{
 							playerBase->GainResources(static_cast<int>(enemyTroops.front()->GetCost() / 10));
@@ -561,6 +594,11 @@ void main()
 				}
 			}
 		}
+		for (int i = 0; i < BaseVec.size(); i++)
+		{
+			BaseVec[i]->MoveY(-10 * frameTime);
+		}
+
 
 		//all the same stuff as above except the roles are reversed
 		for (auto theTroop : enemyTroops)
@@ -578,7 +616,23 @@ void main()
 					{
 						theTroop->SetLastAttack(currentTime);
 						playerBase->TakeDamage(theTroop->GetDamage()); // Base takes damage from the troop in range
+						if (BaseVec.size() < limit)
+						{
+							brickModel = quadMesh->CreateModel(playerBaseModel->GetX(), 20, -20);
+							BaseVec.push_back(brickModel);
+							brickModel->SetSkin("Media\\Owch.jpg");
+							brickModel->Scale(0.5);
+						}
+						else
+						{
+							quadMesh->RemoveModel(BaseVec[0]);
+							BaseVec.erase(BaseVec.begin());
+						}
 					}
+				}
+				for (int i = 0; i < BaseVec.size(); i++)
+				{
+					BaseVec[i]->MoveY(-10 * frameTime);
 				}
 			}
 			else // There are player troops on the field
@@ -594,6 +648,20 @@ void main()
 					{
 						theTroop->SetLastAttack(currentTime);
 						bool died = playerTroops.front()->TakeDamage(theTroop);
+						if (BloodVec.size() < limit) // code for damage indicaton
+						{
+							float spawnPos = playerTroops.front()->GetPosition();
+							bloodModel = quadMesh->CreateModel(spawnPos, 10, 1);
+							BloodVec.push_back(bloodModel);
+							bloodModel->SetSkin("Media\\Cacodemon_tlxcutout.png");
+							bloodModel->Scale(0.5);
+						}
+						else
+						{
+							quadMesh->RemoveModel(BloodVec[0]);
+							BloodVec.erase(BloodVec.begin());
+						}
+
 						if (died)
 						{
 							enemyBase->GainResources(static_cast<int>(playerTroops.front()->GetCost() / 10));
@@ -606,7 +674,11 @@ void main()
 				}
 			}
 		}
-
+		for (int i = 0; i < BaseVec.size(); i++)
+		{
+			BaseVec[i]->MoveY(-10 * frameTime);
+		}
+		
 		if (playerBase->GetNumWeapons() > 0 && !enemyTroops.empty())
 		{
 			if (enemyTroops.front()->GetPosition() - playerBaseWeapon->GetPosition() < playerBaseWeapon->GetRange())
@@ -615,6 +687,20 @@ void main()
 				{
 					playerBaseWeapon->SetLastAttack(currentTime);
 					bool died = enemyTroops.front()->TakeDamage(playerBaseWeapon->GetDamage()); // Base takes damage from the troop in range
+					
+					if (BloodVec.size() < limit)
+					{
+						float spawnPos = enemyTroops.front()->GetPosition();
+						bloodModel = quadMesh->CreateModel(spawnPos, 10, 1);
+						BloodVec.push_back(bloodModel);
+						bloodModel->SetSkin("Media\\Cacodemon_tlxcutout.png");
+						bloodModel->Scale(0.5);
+					}
+					else
+					{
+						quadMesh->RemoveModel(BloodVec[0]);
+						BloodVec.erase(BloodVec.begin());
+					}
 					if (died)
 					{
 						playerBase->GainResources(static_cast<int>(enemyTroops.front()->GetCost() / 10));
@@ -635,6 +721,19 @@ void main()
 				{
 					enemyBaseWeapon->SetLastAttack(currentTime);
 					bool died = playerTroops.front()->TakeDamage(enemyBaseWeapon->GetDamage()); // Base takes damage from the troop in range
+					if (BloodVec.size() < limit)
+					{
+						float spawnPos = playerTroops.front()->GetPosition();
+						bloodModel = quadMesh->CreateModel(spawnPos, 10, 1);
+						BloodVec.push_back(bloodModel);
+						bloodModel->SetSkin("Media\\Cacodemon_tlxcutout.png");
+						bloodModel->Scale(0.5);
+					}
+					else
+					{
+						quadMesh->RemoveModel(BloodVec[0]);
+						BloodVec.erase(BloodVec.begin());
+					}
 					if (died)
 					{
 						enemyBase->GainResources(static_cast<int>(playerTroops.front()->GetCost() / 10));
@@ -645,6 +744,10 @@ void main()
 					}
 				}
 			}
+		}
+		for (int i = 0; i < BloodVec.size(); i++)
+		{
+			BloodVec[i]->MoveY(-10 * frameTime);
 		}
 
 		/* AI HANDLER */
@@ -758,7 +861,7 @@ void main()
 		{
 			myCamera->MoveLocalZ(-CAM_SPEED*frameTime);
 		}
-
+		
 		// camera controls LeftRight
 		if (myEngine->KeyHeld(camLeft))
 		{
@@ -802,6 +905,7 @@ void main()
 
 			}
 		}
+		
 	}
 
 	// Delete the 3D engine now we are finished with it
