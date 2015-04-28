@@ -4,6 +4,8 @@ BaseWeapon::BaseWeapon(IMesh* theMesh, bool thePlayer)
 {
 	damage = 20;
 	range = 30;
+	cost = 500;
+	upgradeCost = 1500;
 	playerOwned = thePlayer;
 	if (playerOwned)
 	{
@@ -23,6 +25,7 @@ void BaseWeapon::UpgradeBaseWeapon()
 {
 	damage += 20;
 	range += 20;
+	upgradeCost = 3000;
 }
 
 int BaseWeapon::GetDamage()
@@ -38,6 +41,16 @@ int BaseWeapon::GetPosition()
 int BaseWeapon::GetRange()
 {
 	return range;
+}
+
+int BaseWeapon::GetCost()
+{
+	return 500;
+}
+
+int BaseWeapon::GetUpgradeCost()
+{
+	return upgradeCost;
 }
 
 /*Returns the time when the troop attacked last*/

@@ -5,7 +5,7 @@ Base::Base()
 	lastResourceGain = time(0);
 	maxHealth = 5000;
 	currentHealth = maxHealth;
-	resources = 1000;
+	resources = 50000;
 	rps = 10;
 	numWeapons = 0;
 	healthUpgradeCost = 500;

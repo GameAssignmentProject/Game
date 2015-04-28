@@ -9,6 +9,8 @@ class BaseWeapon
 private:
 	int damage;
 	int range;
+	int cost;
+	int upgradeCost;
 	IModel* ballistaModel;
 	bool playerOwned; // used to determine which way to move and where to spawn
 	time_t lastAttack;
@@ -19,6 +21,8 @@ public:
 	int GetDamage();
 	int GetPosition();
 	int GetRange();
+	int GetCost();
+	int GetUpgradeCost();
 	time_t GetLastAttack(); // Returns the last attack by the troop
 	void SetLastAttack(time_t theTime); // Set the last time a troop attacked
 };

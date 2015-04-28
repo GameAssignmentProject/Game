@@ -32,7 +32,7 @@ Troop::Troop(TroopName name)
 		damage = 15;
 		cost = 250;
 		cooldown = 5;
-		speed = 4;
+		speed = 4; 
 		range = 15;
 		upgradeCost = 1250;
 		effectiveAgainst = Cavalry;
@@ -119,6 +119,7 @@ IModel* Troop::GetModel()
 void Troop::Move(float x)
 {
 	troopModel->MoveLocalX(x);
+	//troopModel->SetY(10 + (sin(x)*10));
 }
 /*Returns the value of the troops position on the x*/
 float Troop::GetPosition()
