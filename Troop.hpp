@@ -22,6 +22,7 @@ class Troop
 {
 private:
 	IModel* troopModel;
+	IModel* troopHealth;
 	bool playerOwned; // used to determine which way to move and where to spawn
 	TroopName theName; // Type of troop
 	int stage; // upgrade stage of the troop
@@ -40,6 +41,7 @@ public:
 	Troop::Troop(Troop* theBlueprint); // Takes a blueprint troop and recreates the troop to be used later
 	void SpawnTroop(bool playerOwned, I3DEngine* theEngine, IMesh* troopMesh); // Takes the troop created from the blueprint and spawns it
 	IModel* GetModel(); // Returns a pointer to the model the troop uses
+	IModel* GetHealthModel();
 	void Move(float x); // Moves the troop x amount in their forward direction
 	float GetPosition(); // Returns the x position of the troop
 	TroopName GetName(); // Returns the troop type of the troop

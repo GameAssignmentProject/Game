@@ -78,16 +78,22 @@ Troop::Troop(Troop* theBlueprint)
 
 void Troop::SpawnTroop(bool playerMade, I3DEngine* theEngine, IMesh* troopMesh)
 {
+	
 	playerOwned = playerMade;
 	float zFightEliminator = static_cast<float>(rand()) / static_cast<float>(RAND_MAX / 10); // 0.05
 	if (playerMade) // if the player owns the new troop
 	{
 		troopModel = troopMesh->CreateModel(-120, 10, zFightEliminator - 5);
+		troopHealth = troopMesh->CreateModel(-120, 16, zFightEliminator);
+		troopHealth->Scale(0.2f);
 	}
 	else // if the enemy owns the new troop
 	{
 		troopModel = troopMesh->CreateModel(120, 10, zFightEliminator + 5);
+		troopHealth = troopMesh->CreateModel(120, 16, zFightEliminator);
+		troopHealth->Scale(0.2f);
 		troopModel->RotateLocalY(180);
+		troopHealth->RotateLocalY(180);
 	}
 	switch (theName)
 	{
@@ -107,7 +113,9 @@ void Troop::SpawnTroop(bool playerMade, I3DEngine* theEngine, IMesh* troopMesh)
 		troopModel->SetSkin("Troops\\SiegeMachine\\SiegeMachine.png");
 		break;
 	}
+	troopHealth->SetSkin("Troops\\Heart.png");
 	troopModel->RotateLocalX(180);
+	troopHealth->RotateLocalX(180);
 }
 
 IModel* Troop::GetModel()
@@ -115,10 +123,25 @@ IModel* Troop::GetModel()
 	return troopModel;
 }
 
+IModel* Troop::GetHealthModel()
+{
+	return troopHealth;
+}
+
 /*Move the troop by the amount along the x (along the map)*/
 void Troop::Move(float x)
 {
-	troopModel->MoveLocalX(x);
+	if (playerOwned)
+	{
+		troopModel->MoveX(x);
+		troopHealth->MoveX(x);
+	}
+	else
+	{
+		troopModel->MoveX(-x);
+		troopHealth->MoveX(-x);
+	}
+	
 	//troopModel->SetY(10 + (sin(x)*10));
 }
 /*Returns the value of the troops position on the x*/
@@ -163,6 +186,7 @@ int Troop::GetHealth()
   indicating death of the troop else returns false*/
 bool Troop::TakeDamage(Troop* attacker)
 {
+	int prevHealth = currentHealth;
 	if (attacker->GetEffective() == theName)
 	{
 		currentHealth -= attacker->GetDamage() * 3; // Triple damage from units effective against itself
@@ -179,8 +203,10 @@ bool Troop::TakeDamage(Troop* attacker)
 	{
 		currentHealth -= attacker->GetDamage(); // Normal damage for all other cases
 	}
+	troopHealth->Scale(1.0f / (float(prevHealth) / float(currentHealth)));
 	if (currentHealth <= 0)
 	{
+		troopHealth->Scale(0);
 		currentHealth = 0;
 		return true;
 	}
@@ -189,9 +215,12 @@ bool Troop::TakeDamage(Troop* attacker)
 
 bool Troop::TakeDamage(int damage)
 {
+	int prevHealth = currentHealth;
 	currentHealth -= damage; // Normal damage for all other cases
+	troopHealth->Scale(1.0f / (float(prevHealth) / float(currentHealth)));
 	if (currentHealth <= 0)
 	{
+		troopHealth->Scale(0);
 		currentHealth = 0;
 		return true;
 	}

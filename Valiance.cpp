@@ -10,10 +10,27 @@
 #include "BaseWeapon.hpp"
 #include "Projectile.hpp"
 
+#include <al.h>      // Main OpenAL functions
+#include <alc.h>     // OpenAL "context" functions (also part of main OpenAL API)
+#include <AL/alut.h> // OpenAL utility library - helper functions
+
 using namespace std;
 using namespace tle;
 
 const float CAM_SPEED = 50.0f; // speed in which the camera moves
+
+ALuint WeaponBuffer;
+ALuint WeaponSource[10];
+ALuint WalkingBuffer;
+ALuint WalkingSource[10];
+ALuint DeathBuffer;
+ALuint DeathSource[10];
+ALuint BallistaBuffer;
+ALuint BallistaSource;
+
+int WeaponCounter = 0;
+int WalkingCounter = 0;
+int DeathCounter = 0;
 
 float Random()
 {
@@ -35,6 +52,15 @@ bool CompPlayerTroopX(Troop* first, Troop* second)
 bool CompEnemyTroopX(Troop* first, Troop* second)
 {
 	return (first->GetPosition() < second->GetPosition());
+}
+
+bool isPlaying(ALuint source)
+{
+	ALenum state;
+
+	alGetSourcei(source, AL_SOURCE_STATE, &state);
+
+	return (state == AL_PLAYING);
 }
 
 TroopName AIDecideTroop(TroopName theTroopName, int resources, int numEnemies)
@@ -124,6 +150,11 @@ TroopName AIDecideTroop(TroopName theTroopName, int resources, int numEnemies)
 	}
 }
 
+void PlayTheSound()
+{
+
+}
+
 void main()
 {
 	////////////////////////////////////////////////////////////////////////
@@ -140,6 +171,34 @@ void main()
 	int aiDecisionState = 0;
 
 	float GameSpeed = 5.0f;
+
+
+	//SOUNDS
+	
+
+	alutInit(0, 0);
+
+	WeaponBuffer = alutCreateBufferFromFile("Sound\\WeaponHit2.wav");
+	WalkingBuffer = alutCreateBufferFromFile("Sound\\Walking3.wav");
+	DeathBuffer = alutCreateBufferFromFile("Sound\\Death.wav");
+	BallistaBuffer = alutCreateBufferFromFile("Sound\\Ballista.wav");
+	
+
+	for (int i = 0; i < 10; i++)
+	{
+		alGenSources((ALuint)1, &WalkingSource[i]);
+		alSourcei(WalkingSource[i], AL_BUFFER, WalkingBuffer); // Attach a buffer to the source (identify which sound to play)
+		alSourcef(WalkingSource[i], AL_GAIN, 0.1f);
+		alGenSources((ALuint)1, &DeathSource[i]);
+		alSourcei(DeathSource[i], AL_BUFFER, DeathBuffer); // Attach a buffer to the source (identify which sound to play)
+		alGenSources((ALuint)1, &WeaponSource[i]);
+		alSourcei(WeaponSource[i], AL_BUFFER, WeaponBuffer); // Attach a buffer to the source (identify which sound to play)
+		alSourcef(WeaponSource[i], AL_GAIN, 0.1f);
+
+	}
+	alGenSources(1, &BallistaSource);
+	alSourcei(BallistaSource, AL_BUFFER, BallistaBuffer); // Attach a buffer to the source (identify which sound to play)
+	alSourcef(BallistaSource, AL_GAIN, 0.2f);
 
 	//set the seed for any time rand() is called
 	srand(time(0));
@@ -335,6 +394,10 @@ void main()
 	// Base Weapon Controls
 	EKeyCode purchaseBaseWeapon = Key_C;
 
+	// Speed Controls
+	EKeyCode speedUpGame = Key_P;
+	EKeyCode slowDownGame = Key_O;
+
 	// Tracks the last time a type of unit was produced
 	time_t lastSpawnedSwordsman = 0;
 	time_t lastSpawnedArcher = 0;
@@ -430,17 +493,14 @@ void main()
 		{
 
 			if (swordsmanSquare == NULL) {
-				swordsmanSquare = myEngine->CreateSprite("UIModels\\NewSwordsmanButton.png");
-				archerSquare = myEngine->CreateSprite("UIModels\\NewArcherButton.png");
-				spearmanSquare = myEngine->CreateSprite("UIModels\\NewSpearmanButton.png");
-				cavalrySquare = myEngine->CreateSprite("UIModels\\NewCavalryButton.png");
-				batteringramSquare = myEngine->CreateSprite("UIModels\\NewBatteringRamButton.png");
+				swordsmanSquare = myEngine->CreateSprite("UIModels\\SwordsmanButton.png");
+				archerSquare = myEngine->CreateSprite("UIModels\\ArcherButton.png");
+				spearmanSquare = myEngine->CreateSprite("UIModels\\SpearmanButton.png");
+				cavalrySquare = myEngine->CreateSprite("UIModels\\CavalryButton.png");
+				batteringramSquare = myEngine->CreateSprite("UIModels\\BatteringRamButton.png");
 				heartSquare = myEngine->CreateSprite("UIModels\\heart.png");
 				rpsSquare = myEngine->CreateSprite("UIModels\\resource.png");
 				ballistaSquare = myEngine->CreateSprite("UIModels\\Ballista.png");
-
-
-
 
 				swordsmanSquare->SetPosition(120, 550);
 				archerSquare->SetPosition(230, 550);
@@ -452,6 +512,11 @@ void main()
 				ballistaSquare->SetPosition(1110, 550);
 				
 			}
+
+			if (myEngine->KeyHit(speedUpGame) && GameSpeed < 4.5f)
+				GameSpeed += 1.0f;
+			if (myEngine->KeyHit(slowDownGame) && GameSpeed > 1.5f)
+				GameSpeed -= 1.0f;
 
 			//Square = myEngine->CreateSprite();
 
@@ -638,12 +703,6 @@ void main()
 
 			myFont->Draw(outText.str(), 1120, 650);
 			outText.str(""); // Clear myStream
-
-			
-
-
-
-
 
 			if (myEngine->KeyHit(escape))
 			{
@@ -838,6 +897,8 @@ void main()
 					if (theTroop->GetPosition() < static_cast<float>(((enemyBaseModel->GetX() - 8) - theTroop->GetRange())))
 					{
 						theTroop->Move(theTroop->GetSpeed()*frameTime); // move the troop by an amount based on their speed
+						if (!isPlaying(WalkingSource[WalkingCounter])) alSourcePlay(WalkingSource[WalkingCounter]);
+						//if (WalkingCounter > 8) { WalkingCounter = 0; } else { WalkingCounter++; }
 					}
 					else
 					{
@@ -845,6 +906,8 @@ void main()
 						{
 							theTroop->SetLastAttack(currentTime);
 							enemyBase->TakeDamage(theTroop->GetDamage());
+							alSourcePlay(WeaponSource[WeaponCounter]);
+							if (WeaponCounter > 8) { WeaponCounter = 0; } else { WeaponCounter++; }
 						}
 					}
 				}
@@ -853,6 +916,8 @@ void main()
 					if (enemyTroops.front()->GetPosition() - theTroop->GetPosition() > theTroop->GetRange())
 					{
 						theTroop->Move(theTroop->GetSpeed()*frameTime);
+						if (!isPlaying(WalkingSource[WalkingCounter])) alSourcePlay(WalkingSource[WalkingCounter]);
+						//if (WalkingCounter > 8) WalkingCounter = 0; else WalkingCounter++;
 					}
 					else
 					{
@@ -860,11 +925,16 @@ void main()
 						{
 							theTroop->SetLastAttack(currentTime);
 							bool died = enemyTroops.front()->TakeDamage(theTroop);
+							alSourcePlay(WeaponSource[WeaponCounter]);
+							if (WeaponCounter > 8) WeaponCounter = 0; else WeaponCounter++;
 							if (died)
 							{
+								alSourcePlay(DeathSource[DeathCounter]);
+								if (DeathCounter > 8) DeathCounter = 0; else DeathCounter++;
 								playerBase->GainResources(static_cast<int>(enemyTroops.front()->GetCost() / 10));
 								Troop* temp = enemyTroops.front();
 								quadMesh->RemoveModel(temp->GetModel());
+								quadMesh->RemoveModel(temp->GetHealthModel());
 								enemyTroops.pop_front();
 								delete temp;
 							}
@@ -882,6 +952,8 @@ void main()
 					if (theTroop->GetPosition() > (playerBaseModel->GetX() + 8) + theTroop->GetRange())
 					{
 						theTroop->Move(theTroop->GetSpeed()*frameTime);
+						if (!isPlaying(WalkingSource[WalkingCounter])) alSourcePlay(WalkingSource[WalkingCounter]);
+						//if (WalkingCounter > 8) WalkingCounter = 0; else WalkingCounter++;
 					}
 					else // Troop is in range of player base
 					{
@@ -889,6 +961,8 @@ void main()
 						{
 							theTroop->SetLastAttack(currentTime);
 							playerBase->TakeDamage(theTroop->GetDamage()); // Base takes damage from the troop in range
+							alSourcePlay(WeaponSource[WeaponCounter]);
+							if (WeaponCounter > 8) WeaponCounter = 0; else WeaponCounter++;
 						}
 					}
 				}
@@ -898,6 +972,8 @@ void main()
 					if (theTroop->GetPosition() - playerTroops.front()->GetPosition() > theTroop->GetRange())
 					{
 						theTroop->Move(theTroop->GetSpeed()*frameTime);
+						if (!isPlaying(WalkingSource[WalkingCounter])) alSourcePlay(WalkingSource[WalkingCounter]);
+						//if (WalkingCounter > 8) WalkingCounter = 0; else WalkingCounter++;
 					}
 					else // Enemy troop is in range of player troop
 					{
@@ -905,11 +981,16 @@ void main()
 						{
 							theTroop->SetLastAttack(currentTime);
 							bool died = playerTroops.front()->TakeDamage(theTroop);
+							alSourcePlay(WeaponSource[WeaponCounter]);
+							if (WeaponCounter > 8) WeaponCounter = 0; else WeaponCounter++;
 							if (died)
 							{
+								alSourcePlay(DeathSource[DeathCounter]);
+								if (DeathCounter > 8) DeathCounter = 0; else DeathCounter++;
 								enemyBase->GainResources(static_cast<int>(playerTroops.front()->GetCost() / 10));
 								Troop* temp = playerTroops.front();
 								quadMesh->RemoveModel(temp->GetModel());
+								quadMesh->RemoveModel(temp->GetHealthModel());
 								playerTroops.pop_front();
 								delete temp;
 							}
@@ -926,11 +1007,15 @@ void main()
 					{
 						playerBaseWeapon->SetLastAttack(currentTime);
 						bool died = enemyTroops.front()->TakeDamage(playerBaseWeapon->GetDamage()); // Base takes damage from the troop in range
+						alSourcePlay(BallistaSource);
 						if (died)
 						{
+							alSourcePlay(DeathSource[DeathCounter]);
+							if (DeathCounter > 8) DeathCounter = 0; else DeathCounter++;
 							playerBase->GainResources(static_cast<int>(enemyTroops.front()->GetCost() / 10));
 							Troop* temp = enemyTroops.front();
 							quadMesh->RemoveModel(temp->GetModel());
+							quadMesh->RemoveModel(temp->GetHealthModel());
 							enemyTroops.pop_front();
 							delete temp;
 						}
@@ -946,11 +1031,15 @@ void main()
 					{
 						enemyBaseWeapon->SetLastAttack(currentTime);
 						bool died = playerTroops.front()->TakeDamage(enemyBaseWeapon->GetDamage()); // Base takes damage from the troop in range
+						alSourcePlay(BallistaSource);
 						if (died)
 						{
+							alSourcePlay(DeathSource[DeathCounter]);
+							if (DeathCounter > 8) DeathCounter = 0; else DeathCounter++;
 							enemyBase->GainResources(static_cast<int>(playerTroops.front()->GetCost() / 10));
 							Troop* temp = playerTroops.front();
 							quadMesh->RemoveModel(temp->GetModel());
+							quadMesh->RemoveModel(temp->GetHealthModel());
 							playerTroops.pop_front();
 							delete temp;
 						}
@@ -960,7 +1049,7 @@ void main()
 
 			/* AI HANDLER */
 			// If not decided which troop to spawn or been 10 seconds since last decision
-			if (nextSpawningEnemy == None || currentTime - changeDecisionTimer > 10)
+			if (nextSpawningEnemy == None || currentTime - changeDecisionTimer > 1)
 			{
 				if (playerTroops.empty())
 				{
